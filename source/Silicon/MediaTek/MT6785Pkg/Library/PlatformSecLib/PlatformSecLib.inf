@@ -1,0 +1,20 @@
+[Defines]
+  INF_VERSION                    = 0x0001001B
+  BASE_NAME                      = SalaaPlatformSecLib
+  FILE_GUID                      = 6D6E1A20-2151-4678-8567-678500000001
+  MODULE_TYPE                    = BASE
+  VERSION_STRING                 = 1.0
+  LIBRARY_CLASS                  = PlatformSecLib
+
+[Sources]
+  AArch64/PlatformHelper.S
+  PlatformSec.c
+
+[Packages]
+  MdePkg/MdePkg.dec
+  ArmPkg/ArmPkg.dec
+  Silicon/Silicium/SiliciumPkg/SiliciumPkg.dec
+
+[LibraryClasses]
+  BaseLib
+  SerialPortLib

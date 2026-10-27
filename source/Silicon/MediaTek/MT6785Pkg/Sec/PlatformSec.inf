@@ -1,0 +1,67 @@
+##
+# SALAA MT6785 SEC module.
+# SPDX-License-Identifier: BSD-2-Clause-Patent
+##
+[Defines]
+  INF_VERSION                    = 0x00010005
+  BASE_NAME                      = SalaaSec
+  FILE_GUID                      = 9AFFB503-E643-4141-8B90-17E8588B1D35
+  MODULE_TYPE                    = SEC
+  VERSION_STRING                 = 1.0
+  ENTRY_POINT                    = _ModuleEntryPoint
+
+[Sources]
+  PlatformSec.c
+  Sec.h
+
+[Sources.AArch64]
+  AArch64/ArchSec.c
+  AArch64/Exception.S
+  AArch64/Helper.S
+  AArch64/ModuleEntryPoint.S
+
+[Packages]
+  ArmPkg/ArmPkg.dec
+  MdePkg/MdePkg.dec
+  ArmPlatformPkg/ArmPlatformPkg.dec
+  MdeModulePkg/MdeModulePkg.dec
+  EmbeddedPkg/EmbeddedPkg.dec
+  Silicon/Silicium/SiliciumPkg/SiliciumPkg.dec
+
+[LibraryClasses]
+  ArmLib
+  BaseLib
+  PrePiLib
+  DebugLib
+  DebugAgentLib
+  BaseMemoryLib
+  PlatformSecLib
+  PrePiHobListPointerLib
+  CacheMaintenanceLib
+  MemoryMapHelperLib
+  MemoryInitPeiLib
+  PlatformPeiLib
+  SerialPortLib
+  PrintLib
+  TimerLib
+  HobLib
+
+[Ppis]
+  gArmMpCoreInfoPpiGuid
+
+[Guids]
+  gArmMpCoreInfoGuid
+
+[Pcd]
+  gEfiMdeModulePkgTokenSpaceGuid.PcdFirmwareVersionString
+
+[FixedPcd]
+  gArmPlatformTokenSpaceGuid.PcdCPUCoresStackBase
+  gArmPlatformTokenSpaceGuid.PcdCPUCorePrimaryStackSize
+  gArmTokenSpaceGuid.PcdFdBaseAddress
+  gArmTokenSpaceGuid.PcdFdSize
+  gArmTokenSpaceGuid.PcdSystemMemoryBase
+  gArmTokenSpaceGuid.PcdSystemMemorySize
+  gSiliciumPkgTokenSpaceGuid.PcdSmbiosSystemManufacturer
+  gSiliciumPkgTokenSpaceGuid.PcdSmbiosSystemModel
+  gEmbeddedTokenSpaceGuid.PcdPrePiCpuIoSize
