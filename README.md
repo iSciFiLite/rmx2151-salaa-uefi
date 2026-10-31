@@ -31,6 +31,10 @@ The port is built within the Mu-Silicium/EDK II firmware development ecosystem. 
 
 This repository describes the port, its source package, and the build artifact. A generated firmware image is not a substitute for the source and dependency information required to reproduce the build.
 
+The separate [Nemo UEFI bring-up branch](https://github.com/iSciFiLite/rmx2151-salaa-uefi/tree/nemo)
+records the Realme 6 profile and its device-specific memory-map and boot-handoff blockers. It does
+not reuse SALAA's fixed addresses or provide a flashable image.
+
 ## Project details
 
 | Property | Details |
