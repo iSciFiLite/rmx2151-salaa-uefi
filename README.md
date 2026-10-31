@@ -1,37 +1,11 @@
-# Realme 6 Nemo UEFI bring-up
+# Nemo UEFI work has moved
 
-This `nemo` branch starts a device-specific UEFI port for the Realme 6 (RMX2001, Nemo) by reusing
-the MT6785 SEC/SoC sources shared with the [SALAA UEFI port](https://github.com/iSciFiLite/rmx2151-salaa-uefi/tree/main).
+Nemo UEFI tracking now lives in the dedicated repository:
 
-**This branch is not a buildable firmware or a bootable HakiOS path.** It intentionally does not
-copy SALAA's fixed firmware/RAM/stack addresses: the exact Nemo LK handoff, RAM reservations,
-framebuffer address, and firmware load window have not been validated. See
-[`source/Platforms/Realme/NemoPkg/PORTING.md`](source/Platforms/Realme/NemoPkg/PORTING.md) and
-[`nemo-hardware.conf`](nemo-hardware.conf).
+**[iSciFiLite/rmx2001-nemo-uefi](https://github.com/iSciFiLite/rmx2001-nemo-uefi)**
 
-## Shared MT6785 facts
+This legacy branch is retained only as a migration pointer. Do not use it as a firmware source or flash any artifact from its history. The branch inherited SALAA build outputs and an incomplete shared MT6785 source snapshot; neither was a Nemo firmware build. New Nemo documentation, status, and future source changes belong in the separate repository.
 
-- Eight CPU affinities: six A55 cores and two A76-class cores; PSCI CPU start must be verified.
-- GICv3: distributor `0x0c000000`, redistributor `0x0c040000`.
-- UFSHCI base `0x11270000`; no Nemo-ready UFS Block I/O DXE driver is included.
-- Mali-G76 MC4; no UEFI display driver or validated GOP contract is included.
+The separate repo currently contains a device/porting record only. Nemo has no reproducible UEFI build, verified memory map, GOP, UFS Block I/O path, or HakiOS-compatible firmware. Its hosted workflow audits claims and repository contents; it does not build firmware or test hardware.
 
-## HakiOS prerequisites
-
-HakiOS's EFI loader needs a working GOP, PSCI for secondary CPUs, and UFS Block I/O with a
-read-only `xnusys` partition. Nemo's firmware port must additionally establish the exact memory
-map and a safe load/stack/FV reservation before a device image can be built or tested. Current Linux
-references do not prove those UEFI services exist.
-
-The main HakiOS profiles and remote source checks are in
-[iSciFiLite/hakios-mt6785](https://github.com/iSciFiLite/hakios-mt6785). A separate firmware build
-and physical-device test are still required; do not flash this branch.
-
-## Hardware references
-
-- [Nemo mainline device tree](https://github.com/Hari-Pi/realme6-pmos-port/blob/main/linux-realme-nemo/mt6785-realme-nemo.dts)
-- [Nemo Linux device/kernel port](https://github.com/Hari-Pi/realme6-pmos-port)
-- [MT6785 kernel repository](https://github.com/iSciFiLite/android_kernel_realme_nemo)
-- [SALAA UEFI source and shared MT6785 SEC code](https://github.com/iSciFiLite/rmx2151-salaa-uefi/tree/main)
-
-No firmware image, proprietary firmware, stock device tree, or generated binary is distributed.
+For SALAA-only work, see [rmx2151-salaa-uefi main](https://github.com/iSciFiLite/rmx2151-salaa-uefi). For HakiOS loader/kernel status, see [hakios-mt6785](https://github.com/iSciFiLite/hakios-mt6785).
