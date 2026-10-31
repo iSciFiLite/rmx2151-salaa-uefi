@@ -1,0 +1,18 @@
+name: SALAA UEFI source audit
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  source-audit:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Audit source inventory and compatibility claims
+        run: python3 tools/firmware-audit.py

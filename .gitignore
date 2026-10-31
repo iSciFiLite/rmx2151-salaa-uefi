@@ -1,0 +1,10 @@
+# EDK II generated output
+Build/
+Conf/
+*.fd
+*.efi
+*.dll
+*.map
+*.pdb
+*.img
+*.bin
