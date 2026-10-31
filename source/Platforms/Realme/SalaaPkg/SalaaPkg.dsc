@@ -38,6 +38,11 @@
   gEfiMdeModulePkgTokenSpaceGuid.PcdFirmwareVersionString|L"RMX2151_11_F.11"
   gArmPlatformTokenSpaceGuid.PcdCPUCoresStackBase|0x40400000
   gArmPlatformTokenSpaceGuid.PcdCPUCorePrimaryStackSize|0x40000
+  # SimpleFbDxe's mode description; this does not initialize the DSI panel or
+  # establish the reserved framebuffer address from the LK handoff.
+  gSiliciumPkgTokenSpaceGuid.PcdFrameBufferWidth|1080
+  gSiliciumPkgTokenSpaceGuid.PcdFrameBufferHeight|2400
+  gSiliciumPkgTokenSpaceGuid.PcdFrameBufferColorDepth|32
   # Serial SimpleTextInOut must connect without a user-created boot option.
   gEfiMdeModulePkgTokenSpaceGuid.PcdConInConnectOnDemand|FALSE
   gEfiMdePkgTokenSpaceGuid.PcdPlatformBootTimeOut|0

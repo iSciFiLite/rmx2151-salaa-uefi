@@ -75,6 +75,26 @@ The existing Mu-Silicium/EDK II workspace completed the SALAA build and generate
 
 A successful build establishes that the configuration compiled and firmware volumes were generated in the original environment. Runtime behavior depends on the target boot chain, memory state, hardware initialization, and the actual availability and operation of configured drivers. Do not infer support for every peripheral or boot stage solely from build success.
 
+## HakiOS loader compatibility
+
+The HakiOS `xnuloader.efi` is a UEFI application. To boot HakiOS, SALAA firmware must provide a
+working AArch64 UEFI environment, a GOP framebuffer, PSCI CPU start for the MT6785 6+2 cores, and
+UFS Block I/O for the read-only `xnusys` root. It must also preserve a memory map in which the EFI
+application, kernel payload, framebuffer, and firmware do not overlap.
+
+This repository is not yet a HakiOS-compatible firmware release. The published platform files
+reference `SalaaPkg/Include/DXE.inc`, `SalaaPkg/Include/SalaaMuDefaults.dsc.inc`, MT6785 memory and
+serial libraries, and `ShellBootDxe`, which are absent from the tracked source package. No MT6785
+UFS host-controller DXE driver is included. The configured framebuffer dimensions describe the
+SALAA panel mode; they do not turn on the DSI panel or prove that a `Display Reserved` memory region
+is supplied. The original workspace build is not reproducible from this checkout, and no firmware
+runtime test or HakiOS boot has been verified.
+
+Before treating this port as usable, publish every package dependency, build it from a clean
+checkout, verify that the firmware exposes GOP and UFS Block I/O, and test PSCI and memory handoff
+on RMX2151. See [HakiOS MT6785](https://github.com/iSciFiLite/hakios-mt6785) for the loader-side
+contract and current device status.
+
 ## Firmware architecture
 
 ### Platform package: `SalaaPkg`
