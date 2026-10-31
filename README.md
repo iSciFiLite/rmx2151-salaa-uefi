@@ -93,7 +93,7 @@ A green source-audit action closes none of gates 2–9. Those gates remain visib
 
 ## Hosted checks
 
-The [SALAA source audit workflow](https://github.com/iSciFiLite/rmx2151-salaa-uefi/actions/workflows/source-audit.yml) is intended to run on pushes, pull requests, and manual dispatch. It checks that unverified firmware binaries are not committed and reports unresolved source references. It does **not** compile a firmware image, emulate the handset, or verify device behavior. This repository does not currently have a successful hosted UEFI build to report.
+The [SALAA source audit workflow](https://github.com/iSciFiLite/rmx2151-salaa-uefi/actions/workflows/source-audit.yml) runs on pushes, pull requests, and manual dispatch. Its [latest hosted run](https://github.com/iSciFiLite/rmx2151-salaa-uefi/actions/runs/41254374712) passed the repository/status audit for commit `404bc78`; it reports unresolved source references and checks that unverified firmware binaries are not committed. It does **not** compile a firmware image, emulate the handset, or verify device behavior. This repository does not currently have a successful hosted UEFI build to report.
 
 ## Development and safety
 
