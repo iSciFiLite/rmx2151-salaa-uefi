@@ -44,11 +44,11 @@ if committed_artifacts:
 
 # Report known gaps. This is deliberately a source audit, not an EDK II build.
 blockers = [
-    "SalaaPkg/Include/DXE.inc",
-    "SalaaPkg/Include/SalaaMuDefaults.dsc.inc",
-    "Silicon/MediaTek/MT6785Pkg/Library/MemoryMapLib/MemoryMapLib.inf",
-    "Silicon/MediaTek/MT6785Pkg/Library/SerialPortLib/SerialPortLib.inf",
-    "Silicon/MediaTek/MT6785Pkg/Drivers/ShellBootDxe/ShellBootDxe.inf",
+    ("SalaaPkg/Include/DXE.inc", "source/Platforms/Realme/SalaaPkg/Include/DXE.inc"),
+    ("SalaaPkg/Include/SalaaMuDefaults.dsc.inc", "source/Platforms/Realme/SalaaPkg/Include/SalaaMuDefaults.dsc.inc"),
+    ("MT6785Pkg/Library/MemoryMapLib/MemoryMapLib.inf", "source/Silicon/MediaTek/MT6785Pkg/Library/MemoryMapLib/MemoryMapLib.inf"),
+    ("MT6785Pkg/Library/SerialPortLib/SerialPortLib.inf", "source/Silicon/MediaTek/MT6785Pkg/Library/SerialPortLib/SerialPortLib.inf"),
+    ("MT6785Pkg/Drivers/ShellBootDxe/ShellBootDxe.inf", "source/Silicon/MediaTek/MT6785Pkg/Drivers/ShellBootDxe/ShellBootDxe.inf"),
 ]
 summary = [
     "## SALAA UEFI source audit",
@@ -57,9 +57,9 @@ summary = [
     "",
     "Known build/compatibility blockers:",
 ]
-for item in blockers:
-    state = "present" if (root / "source" / item).exists() else "not supplied by this repository"
-    summary.append(f"- `{item}` — {state}")
+for display, path in blockers:
+    state = "present" if (root / path).exists() else "not supplied by this repository"
+    summary.append(f"- `{display}` — {state}")
 summary += [
     "",
     "GOP, UFS Block I/O, memory reservations, PSCI and HakiOS boot remain unverified. A green audit is not firmware compatibility evidence.",
