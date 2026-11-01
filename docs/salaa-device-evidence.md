@@ -150,9 +150,12 @@ advanced past that check but failed because the DSC pointed to
 does not exist. The existing MT6785 package INF is now selected and the
 SALAA-specific no-op implementation is colocated with it. The fourth hosted
 run passed source-path validation and reached EDK library dependency
-resolution; it then found missing mappings for the standard Shell library
-classes. The DSC now maps those classes to the upstream EDK II implementations.
-CI must verify the corrected dependency closure and continue to compilation.
-No C compilation has yet completed. A successful compile will only prove
-source/toolchain integration. It will not verify SEC entry, memory
+resolution; it then found missing mappings for standard Shell library
+classes. The DSC now maps those classes to upstream EDK II implementations.
+On the fifth run, the `build_uefi.py` step completed successfully. The next
+artifact-staging step searched the wrong output directory (`Build/SalaaPkg`
+instead of the DSC's `Build/SALAA`) and failed before FD verification/upload.
+The search now targets `Build/SALAA`; the next run must confirm the FD exists,
+passes signature/size checks, and is uploaded. A successful compile only
+proves source/toolchain integration; it does not verify SEC entry, memory
 reservations, GOP, UFS, PSCI, recovery, or booting an OS.

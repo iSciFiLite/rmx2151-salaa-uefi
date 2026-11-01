@@ -61,7 +61,8 @@ jobs:
       - name: Verify and stage the generated FD
         run: |
           set -euo pipefail
-          fd="$(find mu/Build/SalaaPkg -type f -path '*/FV/SALAA_EFI.fd' -print -quit)"
+          find mu/Build/SALAA -type f -iname '*.fd' -print
+          fd="$(find mu/Build/SALAA -type f -iname 'SALAA_EFI.fd' -print -quit)"
           test -n "$fd"
           python3 salaa-port/tools/verify-uefi-fd.py "$fd" | tee output/verification.json
           cp "$fd" output/SALAA_EFI.actions-${GITHUB_SHA}.fd
