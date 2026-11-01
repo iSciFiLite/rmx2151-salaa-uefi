@@ -63,6 +63,12 @@ for name, (expected_size, expected_hash) in release_outputs.items():
     if actual_hash != expected_hash:
         raise SystemExit(f"Preserved v0.1.0 output has the wrong SHA-256: {name}")
 
+fd_bytes = (root / "artifacts/release-v0.1.0/SALAA_EFI.release-v0.1.0.fd").read_bytes()
+if fd_bytes[40:44] != b"_FVH":
+    raise SystemExit("The preserved FD does not start with a PI firmware-volume header")
+if int.from_bytes(fd_bytes[32:40], "little") != len(fd_bytes):
+    raise SystemExit("The preserved FD volume length does not match the file size")
+
 # Report known gaps. This is deliberately a source audit, not an EDK II build.
 blockers = [
     ("SalaaPkg/Include/DXE.inc", "source/Platforms/Realme/SalaaPkg/Include/DXE.inc"),
@@ -74,7 +80,7 @@ blockers = [
 summary = [
     "## SALAA UEFI source audit",
     "",
-    "**Result:** repository/status and five preserved release-output hashes checked. No EDK II build or firmware execution was performed.",
+    "**Result:** repository/status claims, five preserved release-output hashes, and the FD PI-volume signature/length checked. No EDK II build or firmware execution was performed.",
     "",
     "Known build/compatibility blockers:",
 ]
