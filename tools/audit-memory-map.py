@@ -41,6 +41,16 @@ for match in re.finditer(
 if not ranges:
     raise SystemExit("No memory descriptors were parsed")
 
+payload = re.search(
+    r'\{\s*"XNU Payload Reserved"\s*,\s*(0x[0-9A-Fa-f]+)ULL\s*,\s*(0x[0-9A-Fa-f]+)ULL\s*,\s*AddMem',
+    text,
+)
+if payload is None:
+    raise SystemExit("The HakiOS XNUP handoff region is not reserved")
+payload_start, payload_size = (int(value, 16) for value in payload.groups())
+if (payload_start, payload_size) != (0xF0000000, 0x04000000):
+    raise SystemExit("The XNUP reservation must match HakiOS's 0xF0000000/64 MiB contract")
+
 ranges.sort()
 for previous, current in zip(ranges, ranges[1:]):
     if previous[1] > current[0]:

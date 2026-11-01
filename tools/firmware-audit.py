@@ -11,10 +11,11 @@ ROOT = Path(__file__).resolve().parents[1]
 readme = (ROOT / "README.md").read_text()
 for phrase in (
     "Do not flash",
-    "not compatible yet",
+    "not hardware-tested",
     "UFS Block I/O",
     "Roadmap",
-    "not device-tested",
+    "HakiOS",
+    "reproducible",
 ):
     if phrase.lower() not in readme.lower():
         raise SystemExit(f"README is missing required status text: {phrase}")
@@ -44,6 +45,8 @@ required_files = (
     "source/Platforms/Realme/SalaaPkg/Include/DXE.inc",
     "source/Platforms/Realme/SalaaPkg/Library/MemoryMapLib/MemoryMapLib.inf",
     "source/Platforms/Realme/SalaaPkg/Library/MemoryMapLib/MemoryMapLib.c",
+    "source/Silicon/Silicium/SiliciumPkg/Drivers/SimpleFbDxe/SimpleFb.c",
+    "source/Silicon/Silicium/SiliciumPkg/Drivers/SimpleFbDxe/SimpleFbDxe.inf",
     "source/Silicon/MediaTek/MT6785Pkg/Library/PlatformSecLib/PlatformSecLib.inf",
     "source/Silicon/MediaTek/MT6785Pkg/Library/PlatformSecLib/PlatformSec.c",
     "source/Silicon/MediaTek/MT6785Pkg/Sec/PlatformSec.c",
@@ -56,6 +59,10 @@ required_files = (
     ".github/workflows/edk2-build.yml",
     "tools/verify-uefi-fd.py",
     "tools/audit-memory-map.py",
+    "tools/prepare-hakios-mu.sh",
+    "tools/verify-hakios-integration.py",
+    "integrations/hakios/lock.env",
+    ".github/workflows/hakios-uefi-build.yml",
 )
 for relative in required_files:
     if not (ROOT / relative).is_file():
@@ -66,6 +73,16 @@ if "4bd8ae83bf37de41777f19e0777db70f59383a6d" not in workflow:
     raise SystemExit("The hosted build is not pinned to the reviewed Mu-Silicium commit")
 if "build_uefi.py -d Salaa -r DEBUG -c" not in workflow:
     raise SystemExit("The hosted workflow does not invoke the SALAA EDK II build")
+
+hakios_workflow = (ROOT / ".github/workflows/hakios-uefi-build.yml").read_text()
+for pin in (
+    "687fa6c6a5a70f43184de92980e0a76eea5f2c4b",
+    "e51cd877e31c8fbb322032dc4cb6715e83d25ad3",
+):
+    if pin not in hakios_workflow:
+        raise SystemExit(f"The hosted HakiOS build is missing reviewed source pin: {pin}")
+if "make -C mu/BootShim" not in hakios_workflow:
+    raise SystemExit("The hosted HakiOS workflow does not build the SALAA BootShim")
 
 memory_audit = subprocess.run(
     ["python3", str(ROOT / "tools/audit-memory-map.py")],

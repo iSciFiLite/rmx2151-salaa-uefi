@@ -1,0 +1,165 @@
+name: SALAA HakiOS UEFI integration build
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/hakios-uefi-build.yml'
+      - '.github/workflows/edk2-build.yml'
+      - 'integrations/hakios/**'
+      - 'source/**'
+      - 'Resources/Configs/Salaa.toml'
+      - 'tools/prepare-hakios-mu.sh'
+      - 'tools/verify-hakios-integration.py'
+      - 'tools/verify-uefi-fd.py'
+      - 'tools/audit-memory-map.py'
+  pull_request:
+    paths:
+      - '.github/workflows/hakios-uefi-build.yml'
+      - '.github/workflows/edk2-build.yml'
+      - 'integrations/hakios/**'
+      - 'source/**'
+      - 'Resources/Configs/Salaa.toml'
+      - 'tools/prepare-hakios-mu.sh'
+      - 'tools/verify-hakios-integration.py'
+      - 'tools/verify-uefi-fd.py'
+      - 'tools/audit-memory-map.py'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: salaa-hakios-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build-salaa-hakios:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 120
+    steps:
+      - name: Checkout SALAA port
+        uses: actions/checkout@v4
+        with:
+          path: salaa-port
+
+      - name: Checkout pinned HakiOS UEFI integration
+        uses: actions/checkout@v4
+        with:
+          repository: oosexgang/hakios-uefi
+          ref: 687fa6c6a5a70f43184de92980e0a76eea5f2c4b
+          path: hakios-uefi
+          fetch-depth: 1
+
+      - name: Checkout HakiOS-pinned Mu-Silicium workspace
+        uses: actions/checkout@v4
+        with:
+          repository: Project-Silicium/Mu-Silicium
+          ref: e51cd877e31c8fbb322032dc4cb6715e83d25ad3
+          path: mu
+          submodules: recursive
+          fetch-depth: 1
+
+      - name: Apply HakiOS patch stack and SALAA platform overlay
+        run: |
+          set -euo pipefail
+          mkdir -p build-logs output
+          bash salaa-port/tools/prepare-hakios-mu.sh "$GITHUB_WORKSPACE/hakios-uefi" "$GITHUB_WORKSPACE/mu" | tee build-logs/prepare.log
+          python3 salaa-port/tools/verify-hakios-integration.py mu | tee build-logs/integration-audit.log
+          python3 salaa-port/tools/audit-memory-map.py | tee build-logs/memory-map-audit.log
+          git -C mu rev-parse HEAD | tee build-logs/mu-commit.txt
+          git -C hakios-uefi rev-parse HEAD | tee build-logs/hakios-uefi-commit.txt
+          git -C salaa-port rev-parse HEAD | tee build-logs/salaa-commit.txt
+
+      - name: Install Mu-Silicium EDK II dependencies
+        run: |
+          set -o pipefail
+          cd mu
+          ./setup_env.sh -p apt 2>&1 | tee "$GITHUB_WORKSPACE/build-logs/setup.log"
+
+      - name: Build SALAA HakiOS UEFI on hosted runner
+        run: |
+          set -o pipefail
+          cd mu
+          python3 build_uefi.py -d Salaa -r DEBUG -c 2>&1 | tee "$GITHUB_WORKSPACE/build-logs/build.log"
+
+      - name: Build HakiOS XNUP BootShim for SALAA FD layout
+        run: |
+          set -euo pipefail
+          make -C mu/BootShim \
+            REQUIRES_KERNEL_HEADER=1 \
+            FD_BASE=0x40000000 \
+            FD_SIZE=0x00400000 \
+            'CFLAGS=--target=aarch64-linux-gnu -DPAYLOAD_BASE=0xF0000000'
+          readelf -h mu/BootShim/BootShim.elf | tee build-logs/bootshim-elf.txt
+          readelf -h mu/BootShim/BootShim.elf | grep -q 'AArch64'
+          test -s mu/BootShim/BootShim.bin
+
+      - name: Verify and stage HakiOS integration outputs
+        run: |
+          set -euo pipefail
+          fd="$(find mu/Build/SALAA -type f -iname 'SALAA_EFI.fd' -print -quit)"
+          test -n "$fd"
+          python3 salaa-port/tools/verify-uefi-fd.py "$fd" | tee output/verification.json
+          cp "$fd" "output/SALAA_EFI.hakios-${GITHUB_SHA}.fd"
+          cp mu/BootShim/BootShim.bin "output/SALAA_BootShim.hakios-${GITHUB_SHA}.bin"
+          cp build-logs/mu-commit.txt build-logs/hakios-uefi-commit.txt build-logs/salaa-commit.txt output/
+          sha256sum output/SALAA_EFI.hakios-${GITHUB_SHA}.fd output/SALAA_BootShim.hakios-${GITHUB_SHA}.bin | tee output/SHA256SUMS
+          cat > output/PROVENANCE.md <<EOF
+          # SALAA HakiOS integration build
+
+          - Date: ${GITHUB_RUN_STARTED_AT:-unknown}
+          - SALAA repository commit: ${GITHUB_SHA}
+          - HakiOS UEFI commit: $(cat output/hakios-uefi-commit.txt)
+          - Mu-Silicium commit: $(cat output/mu-commit.txt)
+          - FD base/size: 0x40000000 / 0x00400000
+          - XNUP payload window: 0xF0000000 / 0x04000000
+          - Build: hosted GitHub Actions, Mu-Silicium EDK II DEBUG
+          - Checks: source integration markers, non-overlapping memory map, PI FD header/size, AArch64 BootShim ELF
+          - Phone boot/runtime compatibility: not tested
+          - The fastboot boot image is not produced; it additionally requires the matching SALAA boot DTB and ramdisk.
+          EOF
+
+      - name: Upload HakiOS FD, BootShim, checksums, and provenance
+        uses: actions/upload-artifact@v4
+        with:
+          name: SALAA-HakiOS-UEFI-${{ github.sha }}
+          path: output/*
+          if-no-files-found: error
+          retention-days: 30
+
+      - name: Publish hosted HakiOS integration prerelease
+        if: success() && github.event_name == 'push' && github.ref == 'refs/heads/main'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          tag="v0.3.0-hakios.${GITHUB_SHA:0:7}"
+          cat > output/release-notes.md <<EOF
+          Hosted compile milestone for the SALAA HakiOS/Mu-Silicium integration.
+
+          The release contains the 4 MiB SALAA firmware volume and the AArch64 HakiOS XNUP BootShim built with the matching FD and payload addresses. CI checked source integration, memory-map ranges, FD structure, and BootShim architecture. This is not a phone-tested firmware; do not flash or chainload it without confirming the SALAA bootloader load/entry contract and recovery route.
+
+          Source: ${GITHUB_SHA}
+          HakiOS and Mu-Silicium pins are listed in PROVENANCE.md.
+          EOF
+          gh release create "$tag" \
+            --repo "$GITHUB_REPOSITORY" \
+            --title "SALAA HakiOS integration $GITHUB_SHA" \
+            --notes-file output/release-notes.md \
+            --prerelease \
+            --target "$GITHUB_SHA" \
+            output/SALAA_EFI.hakios-${GITHUB_SHA}.fd \
+            output/SALAA_BootShim.hakios-${GITHUB_SHA}.bin \
+            output/SHA256SUMS \
+            output/verification.json \
+            output/PROVENANCE.md
+
+      - name: Upload build logs, including failed attempts
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: SALAA-HakiOS-UEFI-logs-${{ github.sha }}
+          path: build-logs/
+          if-no-files-found: warn
+          retention-days: 30

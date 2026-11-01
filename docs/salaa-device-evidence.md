@@ -27,6 +27,11 @@ The owner ran these commands in Termux as root and supplied the output:
 | `ro.build.fingerprint` | `realme/RMX2156T2/RMX2156L1:12/SP1A.210812.016/Q.174ebd4_fa4d:user/release-keys` |
 | `MemTotal` | 7,830,224 kB (about 7.46 GiB Linux-visible) |
 | Live DT `/memory` | Base `0x40000000`, size `0x200000000` (8 GiB physical span) |
+| `/sys/class/graphics/fb0/name` | `mtkfb` |
+| `/sys/class/graphics/fb0/bits_per_pixel` | `32` |
+| `/sys/class/graphics/fb0/virtual_size` | `1088,9600` |
+| `/sys/class/graphics/fb0/modes` | `U:1080x2400p-0` |
+| `/sys/class/graphics/fb0/line_length`, `smem_start`, `smem_len` | No values returned by the owner's query |
 
 The fingerprint names RMX2156T2/RMX2156L1 while `ro.product.model` says
 RMX2151L1. Keep the profile restricted to this observed hardware until the
@@ -86,7 +91,9 @@ them available when it launches the FD.
 
 The current source carries the historic FD base `0x40000000`, FD size 4 MiB,
 and stack base `0x40400000`. Since these overlap the stock Android kernel
-layout, the FD must replace the Android kernel payload. The F.11 scatter
+layout, the FD must replace the Android kernel payload. It also excludes the
+HakiOS XNUP window `0xF0000000..0xF3FFFFFF` from DXE allocations, matching the
+upstream BootShim's fixed payload address. The F.11 scatter
 addresses (`LK=0x56500000`, `LK2=0x56700000`, `boot=0x56900000`,
 `DTBO=0x59100000`) are flash offsets and are not DRAM load addresses. No
 provided log confirms the FD load address, entry PC, exception level, SP,
@@ -113,6 +120,17 @@ not LK's pre-UEFI reservation state.
 - The live tree reports DSI at `0x14014000`, panel `truly,td4330,vdo`, and
   touch controller `novatek,nf_nt36672c`. No DSI/panel/touch driver is
   included in the current UEFI package.
+
+The owner later queried `/sys/class/graphics/fb0` as root. A virtual width of
+1088 for a visible width of 1080 means the GOP scan-line pitch must describe
+1088 pixels, not 1080. At 32 bpp that would be 4352 bytes per line if the
+driver's pixel storage is four bytes per pixel; `line_length` was empty, so
+4352 remains an inference. The `virtual_size` height of 9600 is four 2400-row
+buffers; the GOP visible mode remains 1080×2400. The SALAA overlay now passes
+the observed 1088-pixel stride to SimpleFb and checks that the selected mode
+fits the DT-declared display reservation. The physical framebuffer start,
+channel order, actual line length, and validity across the firmware handoff
+still need phone evidence.
 
 These are hardware descriptions only. They do not establish a working UEFI
 driver or interface.
@@ -162,3 +180,12 @@ available in the [hosted-build prerelease](https://github.com/iSciFiLite/rmx2151
 with verification metadata and logs. This verifies compile and image structure
 only, not SEC entry, memory reservations, GOP, UFS, PSCI, recovery, or booting
 an OS.
+
+On 2026-11-01, a separate pinned HakiOS integration path was added. It checks
+out HakiOS UEFI commit `687fa6c6a5a70f43184de92980e0a76eea5f2c4b` and its
+Mu-Silicium base `e51cd877e31c8fbb322032dc4cb6715e83d25ad3`, applies the upstream
+patch/files/banner procedure, overlays the SALAA platform, builds the HakiOS
+FD, then compiles BootShim with the SALAA 4 MiB FD and 64 MiB XNUP constants.
+The result and exact run status are linked from the top-level README. Even a
+passing job verifies compilation only; no SALAA fastboot image or phone boot
+has been tested. The UFS Block I/O and boot contract gaps remain.
