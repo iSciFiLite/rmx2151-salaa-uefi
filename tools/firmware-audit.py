@@ -48,12 +48,20 @@ committed_artifacts = [
 if committed_artifacts:
     raise SystemExit("Unverified generated artifacts are tracked: " + ", ".join(committed_artifacts))
 
-release_fd = root / "artifacts/release-v0.1.0/SALAA_EFI.release-v0.1.0.fd"
-if not release_fd.is_file() or release_fd.stat().st_size != 4_194_304:
-    raise SystemExit("The preserved v0.1.0 release FD is missing or has the wrong size")
-release_hash = hashlib.sha256(release_fd.read_bytes()).hexdigest()
-if release_hash != "5e6ab9e0e9376b634e5393b39b9889c671e746a49f3f582c90b858b75bf1ace7":
-    raise SystemExit("The preserved v0.1.0 release FD does not match its recorded SHA-256")
+release_outputs = {
+    "SALAA_EFI.release-v0.1.0.fd": (4_194_304, "5e6ab9e0e9376b634e5393b39b9889c671e746a49f3f582c90b858b75bf1ace7"),
+    "SalaaSec.release-v0.1.0.efi": (38_912, "4e68dd708969cc6cb00a4ec375c1950d181a573778c8cd87f9c240fe4fbe9bbb"),
+    "SalaaSec-PlatformSec.release-v0.1.0.efi": (38_912, "4e68dd708969cc6cb00a4ec375c1950d181a573778c8cd87f9c240fe4fbe9bbb"),
+    "SalaaSec-PlatformSec.release-v0.1.0.dll": (516_504, "f8e5d6b22157f0e9d6c75ffde2b344ab275d77c13506afd00d7e3f545e9b277d"),
+    "SalaaSec-PlatformSec.release-v0.1.0.map": (103_876, "8c105969769ace628df207c4051c50892dee0206ecd6b490824cbfc29cded642"),
+}
+for name, (expected_size, expected_hash) in release_outputs.items():
+    path = root / "artifacts/release-v0.1.0" / name
+    if not path.is_file() or path.stat().st_size != expected_size:
+        raise SystemExit(f"Preserved v0.1.0 output is missing or has the wrong size: {name}")
+    actual_hash = hashlib.sha256(path.read_bytes()).hexdigest()
+    if actual_hash != expected_hash:
+        raise SystemExit(f"Preserved v0.1.0 output has the wrong SHA-256: {name}")
 
 # Report known gaps. This is deliberately a source audit, not an EDK II build.
 blockers = [
@@ -66,7 +74,7 @@ blockers = [
 summary = [
     "## SALAA UEFI source audit",
     "",
-    "**Result:** repository/status consistency checked. No EDK II build or firmware execution was performed.",
+    "**Result:** repository/status and five preserved release-output hashes checked. No EDK II build or firmware execution was performed.",
     "",
     "Known build/compatibility blockers:",
 ]

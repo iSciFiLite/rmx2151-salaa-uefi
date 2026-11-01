@@ -105,7 +105,7 @@ A green source-audit action closes none of gates 2–9. Those gates remain visib
 
 ## Hosted checks
 
-The [SALAA source audit workflow](https://github.com/iSciFiLite/rmx2151-salaa-uefi/actions/workflows/source-audit.yml) runs on pushes, pull requests, and manual dispatch. It verifies the preserved release FD checksum and reports unresolved source references. It does **not** compile a firmware image, emulate the handset, or verify device behavior. A reproducible hosted EDK II build remains open because the source dependencies listed above are absent from the published checkout.
+The [SALAA source audit workflow](https://github.com/iSciFiLite/rmx2151-salaa-uefi/actions/workflows/source-audit.yml) runs on pushes, pull requests, and manual dispatch. It verifies hashes/sizes for all five preserved release outputs and reports unresolved source references. It does **not** compile a firmware image, emulate the handset, or verify device behavior. A reproducible hosted EDK II build remains open because the source dependencies listed above are absent from the published checkout.
 
 ## Development and safety
 
