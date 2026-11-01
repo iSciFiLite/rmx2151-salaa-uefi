@@ -143,11 +143,13 @@ To make a clean hosted compile possible, this repository now includes:
   verifies FD structure, and preserves the output/logs as Actions artifacts.
 
 The first hosted build reached Mu setup and failed in the pre-build debug
-macro plugin before any C compilation because the platform directory lacked a
-DEC package descriptor. After adding `SalaaPkg.dec`, the second run advanced
-past that check but failed because Mu's EDK path resolver could not resolve
-package-alias paths for SALAA library INFs. The DSC/FDF and local INF
-references now use explicit workspace-relative paths. CI must confirm this
-correction; no C compilation has yet completed. A successful compile will
+macro plugin before any C compilation because the SALAA platform directory
+also lacked a DEC package descriptor. After adding `SalaaPkg.dec`, a later run
+advanced past that check but failed because the DSC pointed to
+`Platforms/Realme/SalaaPkg/Library/PlatformSecLib/PlatformSecLib.inf`, which
+does not exist. The existing MT6785 package INF is now selected and the
+SALAA-specific no-op implementation is colocated with it. The workflow checks
+these files before setup; CI must confirm the source closure and continue to
+compilation. No C compilation has yet completed. A successful compile will
 only prove source/toolchain integration. It will not verify SEC entry, memory
 reservations, GOP, UFS, PSCI, recovery, or booting an OS.

@@ -37,6 +37,10 @@ jobs:
           set -euo pipefail
           cp -a salaa-port/source/. mu/
           install -D salaa-port/Resources/Configs/Salaa.toml mu/Resources/Configs/Salaa.toml
+          test -f mu/Platforms/Realme/SalaaPkg/SalaaPkg.dec
+          test -f mu/Platforms/Realme/SalaaPkg/Library/MemoryMapLib/MemoryMapLib.inf
+          test -f mu/Silicon/MediaTek/MT6785Pkg/Library/PlatformSecLib/PlatformSecLib.inf
+          test -f mu/Silicon/MediaTek/MT6785Pkg/Library/PlatformSecLib/PlatformSec.c
           mkdir -p build-logs output
           git -C mu rev-parse HEAD | tee build-logs/mu-commit.txt
           git -C salaa-port rev-parse HEAD | tee build-logs/salaa-commit.txt
