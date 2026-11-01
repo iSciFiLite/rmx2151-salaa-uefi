@@ -93,6 +93,10 @@ blockers = [
     ("MT6785Pkg/Library/MemoryMapLib/MemoryMapLib.inf", "source/Silicon/MediaTek/MT6785Pkg/Library/MemoryMapLib/MemoryMapLib.inf"),
     ("MT6785Pkg/Library/SerialPortLib/SerialPortLib.inf", "source/Silicon/MediaTek/MT6785Pkg/Library/SerialPortLib/SerialPortLib.inf"),
     ("MT6785Pkg/Drivers/ShellBootDxe/ShellBootDxe.inf", "source/Silicon/MediaTek/MT6785Pkg/Drivers/ShellBootDxe/ShellBootDxe.inf"),
+    ("MT6785Pkg/Sec/Sec.h", "source/Silicon/MediaTek/MT6785Pkg/Sec/Sec.h"),
+    ("MT6785Pkg/Sec/AArch64/ArchSec.c", "source/Silicon/MediaTek/MT6785Pkg/Sec/AArch64/ArchSec.c"),
+    ("MT6785Pkg/Sec/AArch64/Exception.S", "source/Silicon/MediaTek/MT6785Pkg/Sec/AArch64/Exception.S"),
+    ("MT6785Pkg/Sec/AArch64/Helper.S", "source/Silicon/MediaTek/MT6785Pkg/Sec/AArch64/Helper.S"),
 ]
 summary = [
     "## SALAA UEFI source audit",
@@ -108,7 +112,7 @@ for display, path in blockers:
     summary.append(f"- `{display}` — {state}")
 summary += [
     "",
-    "GOP, UFS Block I/O, memory reservations, PSCI and HakiOS boot remain unverified. A green audit is not firmware compatibility evidence.",
+    "The inspected EDK II archive did not supply the missing files or a Mu workspace. GOP, UFS Block I/O, memory reservations, PSCI and HakiOS boot remain unverified. A green audit is not firmware compatibility evidence.",
 ]
 report = "\n".join(summary) + "\n"
 summary_path = os.environ.get("GITHUB_STEP_SUMMARY")

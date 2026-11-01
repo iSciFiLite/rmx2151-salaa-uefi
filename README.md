@@ -73,7 +73,7 @@ The Realme 7 has board/display/touch variants. The target must be identified fro
 
 ### Not done
 
-- No clean-checkout EDK II firmware build. The supplied EDK II archive was inspected and is a generic `edk2/` source tree; it does not contain the SALAA Mu-Silicium workspace, original successful build log, or files still needed here: `SalaaPkg/Include/DXE.inc`, `SalaaPkg/Include/SalaaMuDefaults.dsc.inc`, `MT6785Pkg/Library/MemoryMapLib`, `MT6785Pkg/Library/SerialPortLib`, and `MT6785Pkg/Drivers/ShellBootDxe`. The separate SALAA F.11 inputs provide DTB/DTBO/scatter data, not EDK II sources. The supplied `fail.log` records an Android kernel `Image.gz` failure, not the successful EDK II build.
+- No clean-checkout EDK II firmware build. The supplied EDK II archive was inspected and is a generic `edk2/` source tree; it lacks the SALAA Mu-Silicium workspace, pinned submodules, original successful build log, and source files referenced by the package: `SalaaPkg/Include/DXE.inc`, `SalaaMuDefaults.dsc.inc`, `MT6785Pkg/Library/MemoryMapLib`, `SerialPortLib`, `Drivers/ShellBootDxe`, plus SEC's `Sec.h` and `AArch64/{ArchSec.c,Exception.S,Helper.S}`. The separate SALAA F.11 inputs provide DTB/DTBO/scatter data, not EDK II sources. The supplied `fail.log` records an Android kernel `Image.gz` failure, not the successful EDK II build. See the complete input inventory in the [evidence report](docs/salaa-device-evidence.md).
 - No proven SEC input contract, RAM discovery, memory reservations, framebuffer handoff, serial output, or display-panel initialization.
 - No UFS controller/PHY initialization or UEFI Block I/O implementation.
 - No verification of PSCI, CPU start, firmware boot services, shell, storage, or recovery.

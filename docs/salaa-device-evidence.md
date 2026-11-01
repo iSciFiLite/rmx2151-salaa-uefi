@@ -51,8 +51,10 @@ tree. It does **not** contain the original Mu-Silicium workspace, the SALAA
 package, `SalaaPkg/Include/DXE.inc`,
 `SalaaPkg/Include/SalaaMuDefaults.dsc.inc`,
 `MT6785Pkg/Library/MemoryMapLib`,
-`MT6785Pkg/Library/SerialPortLib`, `MT6785Pkg/Drivers/ShellBootDxe`, or the
-original successful build log. The separately supplied `fail.log` is a Linux
+`MT6785Pkg/Library/SerialPortLib`, `MT6785Pkg/Drivers/ShellBootDxe`, SEC's
+`Sec.h` and `AArch64/{ArchSec.c,Exception.S,Helper.S}`, or the original
+successful build log. It also provides no Mu workspace manifest or pinned
+submodule set. The separately supplied `fail.log` is a Linux
 kernel `Image.gz` failure log, not an EDK II success log. The separate
 `SALAA_F11_mainline_inputs.zip` contains device-tree and scatter inputs, not
 those EDK II sources.
