@@ -36,6 +36,16 @@ HakiOS's AArch64 EFI loader needs firmware that can launch EFI applications and 
 
 **Answer: SALAA UEFI has not been made HakiOS-compatible.** The shared MT6785 facts in [HakiOS MT6785](https://github.com/iSciFiLite/hakios-mt6785) do not make this firmware satisfy those prerequisites. Nemo has the same compatibility blockers plus its own unverified board handoff.
 
+## Interoperability targets
+
+| Target | Intended interface | Current evidence / gap |
+|---|---|---|
+| Mu-Silicium / EDK II | Native EDK II platform package, building against pinned Mu-Silicium workspace dependencies | The v0.1.0 image came from a successful original Ubuntu EDK II build. The current public source package is incomplete, so a clean GitHub-hosted rebuild has not succeeded or been established. SALAA is not an upstream-supported Mu-Silicium target. |
+| XNU UEFI boot path | Standard AArch64 UEFI application and boot-service contract | No XNU EFI-loader boot has been tested with this firmware; standard UEFI-facing intent is not evidence that the firmware provides all services the loader requires. |
+| HakiOS MT6785 | GOP, PSCI, memory handoff, and read-only UFS Block I/O for HakiOS | **Not compatible yet.** GOP, PSCI behavior, safe memory map, and UFS Block I/O are not verified/provided. |
+
+The projects should converge on standard UEFI protocols where possible. Mu-Silicium is the firmware build/dependency ecosystem; XNU and HakiOS are consumers of firmware services. Building under EDK II alone does not establish runtime cross-compatibility with either consumer.
+
 ## Hardware and source configuration
 
 The checked-in SALAA files describe:
