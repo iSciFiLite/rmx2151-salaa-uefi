@@ -1,0 +1,6 @@
+# SALAA UEFI FD layout. It records the existing source layout; it is not an
+# LK load-address contract and is not authorization to flash this image.
+[uefi_fd]
+base = 0x40000000
+size = 0x400000
+blocks = 0x400

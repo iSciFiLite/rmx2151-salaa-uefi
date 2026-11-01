@@ -1,67 +1,148 @@
-# SALAA device evidence supplied for UEFI bring-up
+# SALAA device evidence for UEFI bring-up
 
-This record captures the non-secret facts extracted from the user-supplied
-RMX2151 inputs. The original live DTB is deliberately not checked in: its
-boot arguments contain a device serial number. The hashes below identify the
-inputs without publishing that identifier or any firmware payload.
+This report records sanitized facts from the user-supplied RMX2151 inputs and
+the current phone's Termux output. The original live DTB is not committed:
+its boot arguments contain a device serial number.
 
 ## Input inventory
 
-| Input | Size | SHA-256 | What it contains |
+| Input | Size | SHA-256 | Contents |
 |---|---:|---|---|
-| `SALAA_F11_mainline_inputs.zip` | 108,172 bytes | `43af30c7dcf0ba0413c00bf000c3b2890e8a0325b285713a7e182b844292cf33` | F.11 metadata, base DTB, three DTBOs, and scatter files |
+| `SALAA_F11_mainline_inputs.zip` | 108,172 bytes | `43af30c7dcf0ba0413c00bf000c3b2890e8a0325b285713a7e182b844292cf33` | F.11 metadata, base DTB, 3 DTBOs, scatter files |
 | `salaa-live.dtb` | 227,519 bytes | `0974ca677db2aaf3010b602d37cc123f33860a1d75e9f1fed735178f72e739ec` | Live Android DTB; analyzed locally, not published |
-| `edk2_backup_20261026_183727.tar.gz` | 281,885,686 bytes | `5621aa51e029c58e19092a391d44e64cd6df502bef31cfc7738fb9fe363f1ee5` | Generic `edk2/` source tree; MD5 `05239c223c43e06bc92ef90eef12b0ed` |
+| `edk2_backup_20261026_183727.tar.gz` | 281,885,686 bytes | `5621aa51e029c58e19092a391d44e64cd6df502bef31cfc7738fb9fe363f1ee5` | Generic `edk2/` tree, not a Mu-Silicium workspace; MD5 `05239c223c43e06bc92ef90eef12b0ed` |
 
-The F.11 input manifest identifies RMX2151L1 / RM6785 / MT6785 and firmware
+The F.11 manifest identifies RMX2151L1 / RM6785 / MT6785 and firmware
 `RMX2151_11.F.11_3110_202211171630` (Android 12, vendor Linux 4.14.186).
-These identify the supplied firmware inputs, not a confirmed live handset
-build fingerprint.
+This is the supplied firmware package identity; the live handset reports a
+different build fingerprint below.
 
-## Live DT observations
+## Current handset evidence
 
-- Root-compatible identifies MediaTek MT6785.
-- `/memory` declares base `0x40000000`, size `0x200000000` (8 GiB).
-- `/reserved-memory` contains 26 decoded `reg` ranges. This is vendor DT data, not a
-  measured LK/UEFI memory map; reservations can overlap and their ownership
-  must be established before constructing UEFI memory descriptors.
-- The enabled UFS host node is at `0x11270000` with a `0x2300`-byte register
-  range. Its enabled PHY node is at `0x11fa0000` with a `0xc000`-byte range.
-  These addresses establish DT declarations only; they do not establish that
-  the UEFI can initialize the controller, PHY, link, or expose Block I/O.
-- The live tree lists six Cortex-A55 and two Cortex-A75 cores and uses PSCI in
-  its CPU nodes. No UEFI PSCI call or secondary-core start was observed.
-- The supplied firmware DT/DTBO manifest reports DSI at `0x14014000` and the
-  panel/touch identifiers `truly,td4330,vdo` and `novatek,nf_nt36672c`.
-  Neither a functioning GOP nor panel/touch initialization follows from those
-  identifiers.
+The owner ran these commands in Termux as root and supplied the output:
 
-The current source still sets `PcdSystemMemorySize` to `0x3e605000`, which
-does not match the live DT's 8 GiB `/memory` declaration. Do not simply change
-it to 8 GiB: the UEFI-safe ranges, firmware/secure carve-outs, running image,
-stacks, and framebuffer have not been correlated with the bootloader's memory
-map. Resolve this against the actual SALAA SEC entry contract before selecting
-FD, stack, or DXE heap addresses.
+| Query | Result |
+|---|---|
+| `ro.product.model` | `RMX2151L1` |
+| `ro.build.fingerprint` | `realme/RMX2156T2/RMX2156L1:12/SP1A.210812.016/Q.174ebd4_fa4d:user/release-keys` |
+| `MemTotal` | 7,830,224 kB (about 7.46 GiB Linux-visible) |
+| Live DT `/memory` | Base `0x40000000`, size `0x200000000` (8 GiB physical span) |
 
-## EDK II archive result
+The fingerprint names RMX2156T2/RMX2156L1 while `ro.product.model` says
+RMX2151L1. Keep the profile restricted to this observed hardware until the
+regional/model relationship is confirmed; do not assume it covers every
+SALAA/Narzo 20 Pro variant.
 
-The supplied 281,885,686-byte archive was downloaded and its SHA-256 and MD5
-match the file metadata. Its archive root contains a generic `edk2/` source
-tree. It does **not** contain the original Mu-Silicium workspace, the SALAA
-package, `SalaaPkg/Include/DXE.inc`,
-`SalaaPkg/Include/SalaaMuDefaults.dsc.inc`,
-`MT6785Pkg/Library/MemoryMapLib`,
-`MT6785Pkg/Library/SerialPortLib`, `MT6785Pkg/Drivers/ShellBootDxe`, SEC's
-`Sec.h` and `AArch64/{ArchSec.c,Exception.S,Helper.S}`, the
-`PlatformSecLib/PlatformSec.c` implementation, or the original
-successful build log. It also provides no Mu workspace manifest or pinned
-submodule set. The separately supplied `fail.log` is a Linux
-kernel `Image.gz` failure log, not an EDK II success log. The separate
-`SALAA_F11_mainline_inputs.zip` contains device-tree and scatter inputs, not
-those EDK II sources.
+The supplied `/proc/iomem` exposes these discontiguous System RAM intervals:
 
-Therefore, these inputs improve hardware identification and expose a RAM-size
-mismatch, but do not close source dependencies or make a hosted EDK II build
-reproducible. The historical v0.1.0 FD remains preserved as a separate,
-user-reported successful local build artifact; this evidence does not
-reproduce or validate it.
+```text
+40000000-4cdfffff
+4d100000-55ffffff
+56720000-7531ffff
+75330000-75d2ffff
+7df00000-7dffffff   # reported exactly this way; end is below start
+7e010000-7ee7ffff
+7f400000-7f4bffff
+7f5c0000-7f5fffff
+80000000-8bffffff
+8cd00000-8dffffff
+8e900000-8effffff
+8f320000-9f5effff
+9ff00000-bbffffff
+bc400000-bcffffff
+bd300000-bd513fff
+c0000000-ffcfffff
+ffe00000-13fffefff
+140000000-23fffdfff
+```
+
+The invalid `0x7df00000..0x7dffffff` interval is deliberately omitted from
+`MemoryMapLib.c`; its intended endpoint cannot be inferred safely. The user
+reran `grep 'System RAM$' /proc/iomem` and confirmed the same malformed line.
+No range is fabricated for it. The System RAM map spans 7.76 GiB, consistent
+with the 8 GiB live DT plus reserved holes and Linux-visible accounting.
+
+`/proc/iomem` also shows the stock Android kernel normally uses `0x40080000`
+through `0x4261ffff` for kernel code and `0x42aa0000` through `0x434b7fff` for
+kernel data. The current UEFI map can reuse that memory only in an alternate
+boot where LK replaces the kernel with the UEFI payload. It must not coexist
+with the stock kernel.
+
+## Memory-size reconciliation
+
+The supplied F.11 **base DTB** declares base `0x40000000`, size `0x3e605000`
+(about 998 MiB). The user's **live Android DTB** declares size
+`0x200000000` (8 GiB); Termux reports 7,830,224 kB `MemTotal`, and
+`/proc/iomem` System RAM extents independently reach `0x23fffdfff`. These
+live observations agree, so the platform's `PcdSystemMemorySize` is now
+`0x200000000`. The older/base F.11 DT is not used as the live RAM size.
+
+This resolves the RAM-*capacity* discrepancy for this running device; it does
+not establish the pre-OS UEFI handoff. The `MemoryMapLib` uses the supplied
+System RAM ranges, excludes the malformed line, reserves the selected FD and
+stack windows, and defines a DXE heap in the first RAM bank. These static
+addresses are still a candidate profile, not proof that the bootloader leaves
+them available when it launches the FD.
+
+The current source carries the historic FD base `0x40000000`, FD size 4 MiB,
+and stack base `0x40400000`. Since these overlap the stock Android kernel
+layout, the FD must replace the Android kernel payload. The F.11 scatter
+addresses (`LK=0x56500000`, `LK2=0x56700000`, `boot=0x56900000`,
+`DTBO=0x59100000`) are flash offsets and are not DRAM load addresses. No
+provided log confirms the FD load address, entry PC, exception level, SP,
+x0-x3 arguments, or device-tree pointer.
+
+Before claiming a safe device boot, collect an LK/bootloader log or equivalent
+showing the load/entry addresses and register handoff, plus the pre-OS
+reserved ranges. `/proc/iomem` describes the running Android kernel's view,
+not LK's pre-UEFI reservation state.
+
+## Other live device-tree observations
+
+- Root compatible identifies MediaTek MT6785.
+- The enabled UFS host is at `0x11270000` with a `0x2300`-byte register
+  range; the PHY is at `0x11fa0000` with a `0xc000`-byte range. These are
+  declarations, not proof of clocks, PHY sequence, link training, DMA, or
+  Block I/O.
+- The enabled CPU nodes describe six Cortex-A55 and two Cortex-A75 cores and
+  PSCI via SMC. UEFI PSCI calls and secondary CPU startup have not been run.
+- The live tree contains 26 `/reserved-memory` `reg` ranges. A display
+  reservation begins at `0x75d30000` and spans `0x02cd0000` bytes. The tree
+  reports a 1080x2400-class panel; GOP pixel layout, stride, DSI ownership,
+  and framebuffer lifetime still need device verification.
+- The live tree reports DSI at `0x14014000`, panel `truly,td4330,vdo`, and
+  touch controller `novatek,nf_nt36672c`. No DSI/panel/touch driver is
+  included in the current UEFI package.
+
+These are hardware descriptions only. They do not establish a working UEFI
+driver or interface.
+
+## EDK II source and hosted-build status
+
+The supplied 281,885,686-byte archive was downloaded and hash-checked. It is
+a generic `edk2/` source tree; it does not contain the original Mu-Silicium
+workspace, its pinned submodules, the original successful build log, or the
+SALAA-specific package files. The separately supplied SALAA zip contains
+DTB/DTBO/scatter evidence, not EDK II implementation sources. The supplied
+`fail.log` is an Android kernel `Image.gz` compile failure, not an EDK II
+build log.
+
+To make a clean hosted compile possible, this repository now includes:
+
+- A SALAA `DeviceBuild.py` and Mu config, using Mu-Silicium pinned at
+  `4bd8ae83bf37de41777f19e0777db70f59383a6d`.
+- A SALAA-local DXE firmware-volume list and an explicit set of generic EDK II
+  modules; the absent custom `ShellBootDxe` is replaced by standard BDS/Shell.
+- SEC helper files imported from the pinned Mu-Silicium `SiliciumPkg` with
+  their BSD-2-Clause-Patent notices preserved.
+- A SALAA memory-map library built from the user-provided live memory ranges.
+- A no-op platform SEC hook; no undocumented MediaTek watchdog/clock register
+  is written.
+- A GitHub Actions workflow that overlays SALAA into the pinned recursive Mu
+  workspace, installs upstream build dependencies, invokes the EDK II build,
+  verifies FD structure, and preserves the output/logs as Actions artifacts.
+
+The hosted build has not yet completed at the time of this evidence update.
+An Actions compile will only prove source/toolchain integration. It will not
+verify SEC entry, memory reservations, GOP, UFS, PSCI, recovery, or booting an
+OS.

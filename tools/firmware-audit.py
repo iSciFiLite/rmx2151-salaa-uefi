@@ -1,27 +1,25 @@
 #!/usr/bin/env python3
 # SPDX-License-Identifier: MIT
-"""Audit SALAA UEFI source claims without claiming to build or test firmware."""
+"""Audit SALAA UEFI repository claims and preserved historical artifacts."""
 from pathlib import Path
 import hashlib
 import os
 import re
 import subprocess
 
-root = Path(__file__).resolve().parents[1]
-readme = (root / "README.md").read_text()
-required = [
-    "not a reproducible firmware build",
-    "not compatible with HakiOS",
-    "No clean-checkout EDK II firmware build",
+ROOT = Path(__file__).resolve().parents[1]
+readme = (ROOT / "README.md").read_text()
+for phrase in (
+    "Do not flash",
+    "not compatible yet",
     "UFS Block I/O",
     "Roadmap",
-    "not an EDK II firmware build",
-]
-for phrase in required:
+    "not device-tested",
+):
     if phrase.lower() not in readme.lower():
         raise SystemExit(f"README is missing required status text: {phrase}")
 
-evidence_path = root / "docs/salaa-device-evidence.md"
+evidence_path = ROOT / "docs/salaa-device-evidence.md"
 if not evidence_path.is_file():
     raise SystemExit("The sanitized SALAA device-evidence report is missing")
 evidence = evidence_path.read_text()
@@ -30,37 +28,64 @@ for phrase in (
     "0x200000000",
     "0x11270000",
     "0x11fa0000",
-    "does **not** contain the original Mu-Silicium workspace",
+    "7df00000-7dffffff",
+    "ro.product.model",
 ):
     if phrase.lower() not in evidence.lower():
-        raise SystemExit(f"SALAA evidence report is missing expected input fact: {phrase}")
+        raise SystemExit(f"SALAA evidence report is missing expected device fact: {phrase}")
 if re.search(r"androidboot\.serialno=[^\s\"']+|serialno\s*=\s*\"[^\"]+\"", evidence, re.I):
     raise SystemExit("A device serial value must not be committed in the evidence report")
 
-for path in [
+required_files = (
     "source/Platforms/Realme/SalaaPkg/SalaaPkg.dsc",
     "source/Platforms/Realme/SalaaPkg/SalaaPkg.fdf",
+    "source/Platforms/Realme/SalaaPkg/DeviceBuild.py",
+    "source/Platforms/Realme/SalaaPkg/Include/DXE.inc",
+    "source/Platforms/Realme/SalaaPkg/Library/MemoryMapLib/MemoryMapLib.inf",
+    "source/Platforms/Realme/SalaaPkg/Library/MemoryMapLib/MemoryMapLib.c",
+    "source/Platforms/Realme/SalaaPkg/Library/PlatformSecLib/PlatformSec.c",
     "source/Silicon/MediaTek/MT6785Pkg/Sec/PlatformSec.c",
     "source/Silicon/MediaTek/MT6785Pkg/Sec/PlatformSec.inf",
-]:
-    if not (root / path).is_file():
-        raise SystemExit(f"Required source record is missing: {path}")
+    "source/Silicon/MediaTek/MT6785Pkg/Sec/Sec.h",
+    "source/Silicon/MediaTek/MT6785Pkg/Sec/AArch64/ArchSec.c",
+    "source/Silicon/MediaTek/MT6785Pkg/Sec/AArch64/Exception.S",
+    "source/Silicon/MediaTek/MT6785Pkg/Sec/AArch64/Helper.S",
+    "Resources/Configs/Salaa.toml",
+    ".github/workflows/edk2-build.yml",
+    "tools/verify-uefi-fd.py",
+    "tools/audit-memory-map.py",
+)
+for relative in required_files:
+    if not (ROOT / relative).is_file():
+        raise SystemExit(f"Required SALAA build input is missing: {relative}")
+
+workflow = (ROOT / ".github/workflows/edk2-build.yml").read_text()
+if "4bd8ae83bf37de41777f19e0777db70f59383a6d" not in workflow:
+    raise SystemExit("The hosted build is not pinned to the reviewed Mu-Silicium commit")
+if "build_uefi.py -d Salaa -r DEBUG -c" not in workflow:
+    raise SystemExit("The hosted workflow does not invoke the SALAA EDK II build")
+
+memory_audit = subprocess.run(
+    ["python3", str(ROOT / "tools/audit-memory-map.py")],
+    check=False,
+    capture_output=True,
+    text=True,
+)
+if memory_audit.returncode:
+    raise SystemExit(memory_audit.stderr or memory_audit.stdout)
 
 try:
     tracked = subprocess.check_output(
-        ["git", "-C", str(root), "ls-files", "-z"], text=False
+        ["git", "-C", str(ROOT), "ls-files", "-z"], text=False
     ).decode().split("\0")
 except subprocess.CalledProcessError as exc:
     raise SystemExit("This audit must run in a Git checkout") from exc
 binary_suffixes = {".fd", ".efi", ".dll", ".map", ".pdb", ".img", ".bin"}
-allowed_artifact_prefixes = (
-    "artifacts/release-v0.1.0/",
-    "artifacts/actions/",
-)
+allowed_artifact_prefixes = ("artifacts/release-v0.1.0/", "artifacts/actions/")
 committed_artifacts = [
-    p for p in tracked
-    if p and (Path(p).suffix.lower() in binary_suffixes or p.startswith("build/Build/"))
-    and not p.startswith(allowed_artifact_prefixes)
+    path for path in tracked
+    if path and (Path(path).suffix.lower() in binary_suffixes or path.startswith("build/Build/"))
+    and not path.startswith(allowed_artifact_prefixes)
 ]
 if committed_artifacts:
     raise SystemExit("Unverified generated artifacts are tracked: " + ", ".join(committed_artifacts))
@@ -73,51 +98,28 @@ release_outputs = {
     "SalaaSec-PlatformSec.release-v0.1.0.map": (103_876, "8c105969769ace628df207c4051c50892dee0206ecd6b490824cbfc29cded642"),
 }
 for name, (expected_size, expected_hash) in release_outputs.items():
-    path = root / "artifacts/release-v0.1.0" / name
+    path = ROOT / "artifacts/release-v0.1.0" / name
     if not path.is_file() or path.stat().st_size != expected_size:
         raise SystemExit(f"Preserved v0.1.0 output is missing or has the wrong size: {name}")
-    actual_hash = hashlib.sha256(path.read_bytes()).hexdigest()
-    if actual_hash != expected_hash:
+    if hashlib.sha256(path.read_bytes()).hexdigest() != expected_hash:
         raise SystemExit(f"Preserved v0.1.0 output has the wrong SHA-256: {name}")
 
-fd_bytes = (root / "artifacts/release-v0.1.0/SALAA_EFI.release-v0.1.0.fd").read_bytes()
-if fd_bytes[40:44] != b"_FVH":
-    raise SystemExit("The preserved FD does not start with a PI firmware-volume header")
-if int.from_bytes(fd_bytes[32:40], "little") != len(fd_bytes):
-    raise SystemExit("The preserved FD volume length does not match the file size")
+fd = (ROOT / "artifacts/release-v0.1.0/SALAA_EFI.release-v0.1.0.fd").read_bytes()
+if fd[40:44] != b"_FVH" or int.from_bytes(fd[32:40], "little") != len(fd):
+    raise SystemExit("The historical FD fails PI firmware-volume signature/length checks")
 
-# Report known gaps. This is deliberately a source audit, not an EDK II build.
-blockers = [
-    ("SalaaPkg/Include/DXE.inc", "source/Platforms/Realme/SalaaPkg/Include/DXE.inc"),
-    ("SalaaPkg/Include/SalaaMuDefaults.dsc.inc", "source/Platforms/Realme/SalaaPkg/Include/SalaaMuDefaults.dsc.inc"),
-    ("MT6785Pkg/Library/MemoryMapLib/MemoryMapLib.inf", "source/Silicon/MediaTek/MT6785Pkg/Library/MemoryMapLib/MemoryMapLib.inf"),
-    ("MT6785Pkg/Library/SerialPortLib/SerialPortLib.inf", "source/Silicon/MediaTek/MT6785Pkg/Library/SerialPortLib/SerialPortLib.inf"),
-    ("MT6785Pkg/Library/PlatformSecLib/PlatformSec.c", "source/Silicon/MediaTek/MT6785Pkg/Library/PlatformSecLib/PlatformSec.c"),
-    ("MT6785Pkg/Drivers/ShellBootDxe/ShellBootDxe.inf", "source/Silicon/MediaTek/MT6785Pkg/Drivers/ShellBootDxe/ShellBootDxe.inf"),
-    ("MT6785Pkg/Sec/Sec.h", "source/Silicon/MediaTek/MT6785Pkg/Sec/Sec.h"),
-    ("MT6785Pkg/Sec/AArch64/ArchSec.c", "source/Silicon/MediaTek/MT6785Pkg/Sec/AArch64/ArchSec.c"),
-    ("MT6785Pkg/Sec/AArch64/Exception.S", "source/Silicon/MediaTek/MT6785Pkg/Sec/AArch64/Exception.S"),
-    ("MT6785Pkg/Sec/AArch64/Helper.S", "source/Silicon/MediaTek/MT6785Pkg/Sec/AArch64/Helper.S"),
-]
-summary = [
-    "## SALAA UEFI source audit",
+report = "\n".join((
+    "## SALAA repository audit",
     "",
-    "**Result:** repository/status claims, five preserved release-output hashes, and the FD PI-volume signature/length checked. No EDK II build or firmware execution was performed.",
+    "**Result:** required build files and sanitized device evidence are present; historical release hashes and PI-volume metadata match.",
     "",
-    "Sanitized F.11/live-DT evidence and input hashes checked. The supplied EDK II archive does not close the SALAA source dependencies.",
+    "This audit is not an EDK II build or hardware test. The separate pinned Mu-Silicium workflow compiles the firmware and checks the generated FD structure.",
     "",
-    "Known build/compatibility blockers:",
-]
-for display, path in blockers:
-    state = "present" if (root / path).exists() else "not supplied by this repository"
-    summary.append(f"- `{display}` — {state}")
-summary += [
+    "Still requiring device evidence: exact LK FD load/entry contract, the omitted inverted System RAM interval, GOP stride/pixel format, UART setup, UFS host/PHY/Block I/O, and actual boot/recovery behavior.",
     "",
-    "The inspected EDK II archive did not supply the missing files or a Mu workspace. GOP, UFS Block I/O, memory reservations, PSCI and HakiOS boot remain unverified. A green audit is not firmware compatibility evidence.",
-]
-report = "\n".join(summary) + "\n"
-summary_path = os.environ.get("GITHUB_STEP_SUMMARY")
-if summary_path:
-    with open(summary_path, "a", encoding="utf-8") as stream:
+))
+summary = os.environ.get("GITHUB_STEP_SUMMARY")
+if summary:
+    with open(summary, "a", encoding="utf-8") as stream:
         stream.write(report)
 print(report)

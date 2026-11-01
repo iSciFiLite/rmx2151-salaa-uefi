@@ -1,0 +1,19 @@
+##
+# SALAA RAM and MMIO map derived from user-provided RMX2151L1 live evidence.
+# SPDX-License-Identifier: BSD-2-Clause-Patent
+##
+[Defines]
+  INF_VERSION                    = 0x00010005
+  BASE_NAME                      = MemoryMapLib
+  FILE_GUID                      = 81F42437-73B7-4D70-A9D7-678500000001
+  MODULE_TYPE                    = BASE
+  VERSION_STRING                 = 1.0
+  LIBRARY_CLASS                  = MemoryMapLib
+
+[Sources]
+  MemoryMapLib.c
+
+[Packages]
+  ArmPkg/ArmPkg.dec
+  MdePkg/MdePkg.dec
+  SiliciumPkg/SiliciumPkg.dec

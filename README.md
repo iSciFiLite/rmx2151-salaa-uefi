@@ -1,130 +1,87 @@
-# SALAA UEFI — Realme 7 (RMX2151)
+# SALAA UEFI — Realme 7 / RMX2151
 
-An experimental UEFI **porting record** for the Realme 7, codename SALAA, based on MediaTek MT6785 / Helio G95. This repository contains an early EDK II platform configuration and SEC entry implementation. **It is not a reproducible firmware build or bootable release, and it is not compatible with HakiOS. Do not flash it.**
+An experimental EDK II / Mu-Silicium firmware port for the Realme 7 SALAA family (MediaTek MT6785, Helio G95). The repository contains a platform package and a hosted build workflow. A successful build would prove that EDK II can produce an FD; it would **not** prove that the FD can safely boot on a handset. Do not flash or chainload an image until the LK entry contract and recovery path are confirmed.
 
-A separate [Nemo UEFI repository](https://github.com/iSciFiLite/rmx2001-nemo-uefi) tracks Realme 6 (RMX2001) work. It deliberately does not inherit SALAA's memory addresses.
+## Current result
 
-## Status at a glance
-
-| Component | Present in source | Tested on Actions | Verified on RMX2151 | Status |
-|---|---:|---:|---:|---|
-| SALAA platform DSC/FDF | Yes | Static metadata only | No | Incomplete |
-| MT6785 SEC entry / assembly | Yes | No EDK II build | No | Initial source |
-| RAM discovery and HOB handoff | Live DT observed; UEFI map dependency absent | No | No | Blocked |
-| Serial console | Referenced, implementation absent | No | No | Blocked |
-| UEFI GOP / panel | No working driver or handoff | No | No | Unsupported |
-| UFS Block I/O | Live DT host/PHY nodes observed; no MT6785 UEFI driver | No | No | Unsupported |
-| PSCI / secondary CPUs | Generic EDK components selected | No | No | Unverified |
-| HakiOS boot | No | No | No | **Not compatible yet** |
-| Firmware image | `v0.1.0` release FD restored and provenance-pinned | Original local EDK II build succeeded; no hosted firmware build yet | No | Historical artifact; not device-verified |
-
-“Present in source” means files/configuration are checked in. It does not mean the code compiles or runs. The hosted workflow audits the package and its claims; it is not an EDK II firmware build or an emulator/device test.
-
-## HakiOS compatibility
-
-HakiOS's AArch64 EFI loader needs firmware that can launch EFI applications and provide a valid memory map, GOP framebuffer, PSCI CPU startup, and UFS Block I/O for the read-only `xnusys` root. It also requires safe, non-overlapping firmware, stack, loader, kernel, framebuffer, and RAM reservations.
-
-| HakiOS requirement | SALAA firmware status |
-|---|---|
-| AArch64 UEFI boot services | Not demonstrated by a reproducible image |
-| Valid RAM map and memory descriptors | **Not verified.** The SEC implementation looks up a `DXE Heap` region from an absent memory-map library. |
-| Safe firmware/FD/stack placement | **Not verified.** `0x40000000` FD base and `0x40400000` stack are source assumptions, not an LK/UEFI handoff contract. |
-| GOP framebuffer | **Not provided or verified.** Width/height PCDs do not initialize the DSI panel or create GOP. |
-| PSCI secondary CPU start | Not verified |
-| UFS Block I/O / read-only `xnusys` | **Not provided.** No MT6785 UFS host or Block I/O DXE driver is included. |
-| HakiOS boot/recovery path | Not tested; no image or recovery recipe |
-
-**Answer: SALAA UEFI has not been made HakiOS-compatible.** The shared MT6785 facts in [HakiOS MT6785](https://github.com/iSciFiLite/hakios-mt6785) do not make this firmware satisfy those prerequisites. Nemo has the same compatibility blockers plus its own unverified board handoff.
-
-## Interoperability targets
-
-| Target | Intended interface | Current evidence / gap |
+| Area | Current implementation | Evidence / limit |
 |---|---|---|
-| Mu-Silicium / EDK II | Native EDK II platform package, building against pinned Mu-Silicium workspace dependencies | The v0.1.0 image came from a successful original Ubuntu EDK II build. The current public source package is incomplete, so a clean GitHub-hosted rebuild has not succeeded or been established. SALAA is not an upstream-supported Mu-Silicium target. |
-| XNU UEFI boot path | Standard AArch64 UEFI application and boot-service contract | No XNU EFI-loader boot has been tested with this firmware; standard UEFI-facing intent is not evidence that the firmware provides all services the loader requires. |
-| HakiOS MT6785 | GOP, PSCI, memory handoff, and read-only UFS Block I/O for HakiOS | **Not compatible yet.** GOP, PSCI behavior, safe memory map, and UFS Block I/O are not verified/provided. |
+| EDK II platform | SALAA DSC/FDF, Mu `DeviceBuild.py`, pinned Mu-Silicium workflow | First hosted build runs after this commit; no device result yet |
+| SEC and early memory | AArch64 SEC plus static RAM/MMIO map from the supplied phone evidence | Entry registers and LK load/entry addresses remain unknown |
+| RAM size | 8 GiB physical span (`0x40000000` + `0x200000000`) | Live DT and `MemTotal` agree; F.11 base DTB is an older/different 1 GiB declaration |
+| GOP | SimpleFbDxe consumes the observed bootloader framebuffer reservation | Does not initialize DSI/panel; format, stride, and lifetime are unverified |
+| Serial | Null SerialPortLib | No UART MMIO writes until clock, pins, baud, and handoff are confirmed |
+| Storage | Generic disk/partition/FAT and USB class drivers included | No MT6785 UFS host/PHY driver or USB host controller; internal UFS is unsupported |
+| Shell | EDK II Shell and BDS included in the firmware volume | Requires successful SEC/DXE startup; not device-tested |
+| PSCI/reset | Generic Arm GIC, timer, and PSCI reset components selected | Device SMC behavior and secondary CPU start are untested |
+| HakiOS compatibility | Not compatible yet | UFS Block I/O and hardware validation are missing |
 
-The projects should converge on standard UEFI protocols where possible. Mu-Silicium is the firmware build/dependency ecosystem; XNU and HakiOS are consumers of firmware services. Building under EDK II alone does not establish runtime cross-compatibility with either consumer.
+The current target identity from Termux is `ro.product.model=RMX2151L1`; the build fingerprint names `RMX2156T2/RMX2156L1`. That variant/build identity should be confirmed before treating this profile as compatible with other SALAA models.
 
-## Hardware and source configuration
+## Work completed
 
-The checked-in SALAA files describe:
+- Added a reproducible GitHub Actions build path using Mu-Silicium pinned at [`4bd8ae83`](https://github.com/Project-Silicium/Mu-Silicium/commit/4bd8ae83bf37de41777f19e0777db70f59383a6d), including recursive submodules, hosted dependency installation, EDK II build logs, FD structure checks, and an artifact upload.
+- Reconstructed the missing platform `DeviceBuild.py`, FD config, DXE firmware-volume list, SEC helper sources, and a SALAA memory-map library. The SEC platform hook avoids undocumented MT6785 register writes.
+- Used the supplied live DT plus current Termux memory evidence to correct the physical-memory bound to 8 GiB and define observed Android-visible System RAM ranges. The F.11 base DTB still differs and is not assumed to be the active tree.
+- Enabled generic UEFI boot/runtime, BDS/Shell, graphics console/SimpleFb, reset, timer, disk filesystem, and USB class modules where upstream code exists. Generic class drivers do not replace missing SoC host-controller support.
+- Preserved the historical `v0.1.0` release files and hashes unchanged. They remain user-reported local-build outputs, not hardware-verified firmware.
 
-- Realme 7 RMX2151, MT6785, AArch64, build name `SALAA`.
-- Eight CPU cores in two clusters and GICv3 addresses from the referenced F.11 device tree. CPU startup behavior is not demonstrated.
-- A 1080×2400 framebuffer mode. This is only a mode description; no panel initialization or framebuffer reservation is established.
-- Firmware base `0x40000000`, size 4 MiB, and primary stack base `0x40400000`. These are **unverified source assumptions**. The user-supplied live DT declares RAM at `0x40000000` with size `0x200000000` (8 GiB), while the current system-memory PCD is `0x3e605000`; this mismatch is recorded in the [SALAA evidence report](docs/salaa-device-evidence.md). Neither the Android kernel load address nor the live DT alone establishes the safe UEFI FD/stack/payload map.
-- The live DT declares 26 reserved-memory `reg` ranges and enabled UFS host/PHY nodes at `0x11270000` and `0x11fa0000`. These are hardware descriptions, not proof of available memory or an initialized UFS link. The original DTB is not published because its boot arguments contain a device serial number.
-- `ENABLE_SECUREBOOT = 0` in the EDK II build configuration. This setting alone does not disable Android Verified Boot.
+## Still incomplete
 
-The Realme 7 has board/display/touch variants. The target must be identified from the exact device revision and its bootloader/device-tree handoff before using board-specific addresses. No raw stock firmware, firmware dump, signing key, Darwin image, or raw live DTB is distributed here.
+- Hosted EDK II compilation: awaiting the first `SALAA EDK II firmware build` run. A compile error must be repaired from the Action logs before calling the build reproducible.
+- SEC entry contract: no LK trace identifies entry PC, exception level, stack pointer, argument registers, DT pointer, or FD load address. `0x40000000` is also the stock Android kernel load region; the FD must replace the kernel payload rather than coexist with it.
+- RAM reservations: the current map is reconstructed from Android's `/proc/iomem`; one pasted System RAM interval was inverted and is omitted pending a short filtered recheck. The complete pre-OS LK reservation map is not known.
+- Display: the live tree reports a framebuffer reservation at `0x75d30000` (`0x02cd0000` bytes), but SimpleFb's 1080×2400×32-bit assumptions and pixel layout need on-device confirmation. DSI panel initialization is absent.
+- Serial: no MT6785 UART driver. The build intentionally uses the null library instead of risking an unclocked UART write.
+- UFS: the DT declares HCI at `0x11270000` and PHY at `0x11fa0000`, but DT addresses alone do not supply UFS clocks, PHY sequencing, reset, DMA/IOMMU, or Block I/O. Internal storage is not usable from UEFI yet.
+- USB host, touch, power/PMIC, RTC correctness, secure-boot policy, PSCI CPU startup, recovery behavior, XNU/HakiOS handoff, and all physical-device behavior remain unverified or unsupported.
 
-## What is done and what is not
+## Device evidence and memory layout
 
-### Done
+The sanitized input inventory and DT analysis are in [`docs/salaa-device-evidence.md`](docs/salaa-device-evidence.md). The supplied live phone facts are:
 
-- Added a SALAA-named EDK II DSC/FDF, MT6785 DSC include, SEC module, entry assembly, and PlatformSecLib source.
-- Recorded MT6785 / SALAA facts and the upstream Mu-Silicium / EDK II starting point.
-- Completed an EDK II `DEBUG_GCC` build in the original Ubuntu workspace and published the output in release `v0.1.0`.
-- Analyzed the supplied F.11 metadata/DTBO set and live DTB; recorded sanitized hardware facts, input hashes, and the unresolved memory-size mismatch in [`docs/salaa-device-evidence.md`](docs/salaa-device-evidence.md).
-- Restored the release FD plus SEC EFI/DLL/map outputs under `artifacts/release-v0.1.0/`, with filenames and hashes that distinguish them from future Actions output.
-- Added a GitHub Actions source/claim audit. It checks repository hygiene, preserves the release FD checksum, and surfaces unresolved source dependencies.
-- Separated Nemo documentation into [its own repository](https://github.com/iSciFiLite/rmx2001-nemo-uefi).
+- `ro.product.model`: `RMX2151L1`.
+- Build fingerprint: `realme/RMX2156T2/RMX2156L1:12/SP1A.210812.016/Q.174ebd4_fa4d:user/release-keys`.
+- `MemTotal`: 7,830,224 kB (about 7.46 GiB available to Linux).
+- Live DT `/memory`: base `0x40000000`, size `0x200000000` (8 GiB physical span).
+- `/proc/iomem` has discontiguous System RAM ending at `0x23fffdfff`; holes are left out of the current map.
+- The F.11 base DTB instead declares `0x3e605000` bytes. Its scatter offsets are flash offsets, not RAM load addresses.
 
-### Not done
+The FD base `0x40000000`, size 4 MiB, and stack `0x40400000` are carried forward from the historic SALAA FD layout. `/proc/iomem` shows Android's kernel normally occupies this area. They are therefore usable only in a boot path where LK replaces the Android kernel with this UEFI payload at the expected load/entry address. The current memory map does not establish that contract. Do not use Android's `boot.img` kernel address as proof of an FD load address.
 
-- No clean-checkout EDK II firmware build. The supplied EDK II archive was inspected and is a generic `edk2/` source tree; it lacks the SALAA Mu-Silicium workspace, pinned submodules, original successful build log, and source files referenced by the package: `SalaaPkg/Include/DXE.inc`, `SalaaMuDefaults.dsc.inc`, `MT6785Pkg/Library/MemoryMapLib`, `SerialPortLib`, `Drivers/ShellBootDxe`, SEC's `Sec.h` and `AArch64/{ArchSec.c,Exception.S,Helper.S}`, and `PlatformSecLib/PlatformSec.c`. The separate SALAA F.11 inputs provide DTB/DTBO/scatter data, not EDK II sources. The supplied `fail.log` records an Android kernel `Image.gz` failure, not the successful EDK II build. See the complete input inventory in the [evidence report](docs/salaa-device-evidence.md).
-- No proven SEC input contract, RAM discovery, memory reservations, framebuffer handoff, serial output, or display-panel initialization.
-- No UFS controller/PHY initialization or UEFI Block I/O implementation.
-- No verification of PSCI, CPU start, firmware boot services, shell, storage, or recovery.
-- No HakiOS boot or physical-device validation.
+The raw live DTB is intentionally not published because its boot arguments contain a device serial. Input hashes and sanitized facts are documented in the evidence report. No stock firmware, private signing keys, or Darwin image is included.
 
-The v0.1.0 release remains available and its generated outputs are restored in this repository under `artifacts/release-v0.1.0/`. These are historical build outputs, not a device-verified firmware release. The current source checkout still lacks dependencies required to reproduce that build. No new Actions-built firmware image is published yet.
+## HakiOS and other consumers
 
-### Preserved v0.1.0 outputs
+**SALAA UEFI has not been made compatible with HakiOS, XNU, or another OS.** Generic UEFI modules and a successful EDK II build would provide a firmware-volume image and compile-time integration only. HakiOS additionally needs a validated memory map, working GOP, stable boot-services handoff, and read-only UFS Block I/O. None has been exercised on this handset. Mu-Silicium is the build/dependency base; it is not proof of consumer compatibility.
 
-| File | Origin / SHA-256 |
-|---|---|
-| [`SALAA_EFI.release-v0.1.0.fd`](artifacts/release-v0.1.0/SALAA_EFI.release-v0.1.0.fd) | Published `v0.1.0` release archive; `5e6ab9e0e9376b634e5393b39b9889c671e746a49f3f582c90b858b75bf1ace7` |
-| `SalaaSec.release-v0.1.0.efi` | Release archive SEC output; SHA-256 recorded in [`PROVENANCE.md`](artifacts/release-v0.1.0/PROVENANCE.md) |
-| `SalaaSec-PlatformSec.release-v0.1.0.efi/.dll/.map` | Release archive module outputs and linker map; hashes recorded in [`PROVENANCE.md`](artifacts/release-v0.1.0/PROVENANCE.md) |
+The enabled SimpleFb path may reuse a bootloader-initialized framebuffer without touching the DSI registers. UFS and USB class drivers are present only as protocol layers: no MT6785 UFS host/PHY or USB host implementation is included. Unsupported hardware stays explicitly unsupported in the status table rather than receiving copied MT6768/MT6789 register assumptions.
 
-The attached [`salaaPkg-v0.1.0.zip`](https://github.com/iSciFiLite/rmx2151-salaa-uefi/releases/download/v0.1.0/salaaPkg-v0.1.0.zip) remains unchanged. Its SHA-256 is `bfb8dd33d8082a2a3d81bce43e3e6c8e82b4fa900208566a4268e34f0d93dba1`. The FD is also available as a [separate release download](https://github.com/iSciFiLite/rmx2151-salaa-uefi/releases/download/v0.1.0/SALAA_EFI.release-v0.1.0.fd). An Actions-built output, if produced, will have a separate `actions-<commit>` name and checksum.
+## Build on GitHub Actions
+
+The [`SALAA EDK II firmware build`](.github/workflows/edk2-build.yml) workflow checks out Mu-Silicium at the pinned commit, recursively checks out its required submodules, overlays this platform, runs the upstream dependency setup, builds `DEBUG` with `build_uefi.py -d Salaa`, validates the PI firmware-volume signature/size, and uploads the FD, SHA-256, provenance, and logs. Failed runs also retain logs. The workflow does not run on this local Ubuntu machine.
+
+Artifacts are named `SALAA_EFI.actions-<commit>.fd` and retained by Actions for 30 days. They are experimental compile outputs, not flashable releases. The old `v0.1.0` release is preserved separately. The [`source audit`](.github/workflows/source-audit.yml) checks documentation, source inventory, and old artifact provenance; it does not replace the EDK II build.
 
 ## Roadmap
 
-| Gate | Work required | State |
+| Gate | Required work | State |
 |---|---|---|
-| 1. Source closure | Add or pin every package/include/library/module dependency and preserve upstream licenses; the supplied archive did not include the missing SALAA workspace files | **Open** |
-| 2. Hosted reproducible build | Build from a clean GitHub Actions runner using pinned dependency revisions; retain logs and temporary artifacts | **Open** |
-| 3. SEC and RAM contract | Establish actual LK entry registers, RAM ranges/reservations, FD load address, stack, and HOB map for each RMX2151 revision | **Open — requires device evidence** |
-| 4. Basic firmware services | Prove serial, boot manager, shell, runtime services, and stable recovery entry | **Open** |
-| 5. GOP | Implement or consume the actual handoff framebuffer; verify format, stride, address, and lifetime | **Open — requires device evidence** |
-| 6. PSCI | Verify method, CPU IDs, secondary-core startup, and XNU handoff | **Open — requires device evidence** |
-| 7. UFS | Provide and validate UFS Block I/O and read-only GPT/partition access; then boot a test payload | **Open** |
-| 8. HakiOS integration | Boot the HakiOS loader/kernel read-only and record UART/serial and framebuffer logs | **Open** |
-| 9. Recovery and release | Document a verified recovery route; publish only reproducible artifacts with matching source and provenance | **Open** |
+| Source closure and pinned workspace | Platform build files and upstream SEC helpers are now present; complete through hosted compile | **In progress** |
+| Hosted clean build | Build with pinned Mu-Silicium on GitHub Actions, fix errors, retain exact logs and FD hash | **Pending first run** |
+| SALAA boot contract | Confirm LK load/entry address, EL, SP, registers/DT pointer, and pre-OS reserved ranges | **Open — needs bootloader evidence** |
+| Memory map | Correct the one inverted `/proc/iomem` line and validate against LK/DT reservations | **Open** |
+| GOP | Confirm inherited framebuffer base, size, pixel format, stride, and display lifetime | **Open — hardware test** |
+| Serial and recovery | Add measured UART support and document a verified recovery path | **Open — hardware evidence** |
+| UFS Block I/O | Implement MT6785 HCI/PHY setup and validate read-only GPT/partition access | **Open** |
+| PSCI and firmware services | Verify reset, timer, GIC, variables, shell, and secondary CPU behavior | **Open — hardware test** |
+| HakiOS/XNU integration | Boot a test loader, collect serial/GOP/memory-map logs, and validate `ExitBootServices` | **Open** |
 
-A green source-audit action closes none of gates 2–9. Those gates remain visible until matching build logs or device test evidence exists.
+No step is considered complete from a source audit alone. Only the hosted compile can be verified without the device; memory, GOP, UFS, and boot behavior require real SALAA evidence.
 
-## References
+## References and licenses
 
-- [Project Silicium / Mu-Silicium](https://github.com/Project-Silicium/Mu-Silicium) and its [build guide](https://github.com/Project-Silicium/Mu-Silicium/blob/main/Building.md): EDK II workspace and package-layout reference. SALAA is not an upstream-supported target.
-- [HakiOS MT6785](https://github.com/iSciFiLite/hakios-mt6785): current loader/kernel-side contract and SALAA/Nemo status.
-- [Realme 7 SALAA device tree](https://github.com/realme-mt6785-devs/android_device_realme_salaa): hardware reference; not copied into this repository.
-- [Nemo UEFI status](https://github.com/iSciFiLite/rmx2001-nemo-uefi): separate RMX2001 record.
-- [TianoCore EDK II](https://github.com/tianocore/edk2).
-
-## Hosted checks
-
-The [SALAA source audit workflow](https://github.com/iSciFiLite/rmx2151-salaa-uefi/actions/workflows/source-audit.yml) runs on pushes, pull requests, and manual dispatch. It verifies hashes/sizes for all five preserved release outputs, checks the FD's PI firmware-volume signature/length, and reports unresolved source references. It does **not** compile a firmware image, emulate the handset, or verify device behavior. A reproducible hosted EDK II build remains open because the supplied archive is generic EDK II source and the SALAA dependencies listed above remain absent from the published checkout.
-
-## Development and safety
-
-Use the upstream Mu-Silicium build guide only after completing source closure and adding a SALAA `DeviceBuild.py`/workspace configuration with pinned dependencies. Do not infer a usable build command from the incomplete DSC/FDF. Do not flash the historical 4 MiB output or any experimental image. Keep the stock boot, vendor_boot, vbmeta, and recovery images; use a verified recovery route before future device experiments.
-
-Do not enable a hardware feature just because a corresponding component exists for another MediaTek SoC. The G85 MT6768 donor is useful for HakiOS software interfaces and porting patterns; its board registers, eMMC path, GPU power sequence, and peripheral protocols are not a SALAA hardware implementation.
-
-## Credits and licensing
-
-The port uses EDK II / Mu-Silicium structure and retains BSD-2-Clause-Patent SPDX identifiers on SALAA-specific source files. The source-audit helper is MIT-licensed in [`LICENSE-CODE`](LICENSE-CODE). Preserve all original file notices and the licenses of any dependency later added. No stock firmware, proprietary firmware, signing keys, Darwin image, or generated firmware binary is distributed.
+- [Project Silicium / Mu-Silicium](https://github.com/Project-Silicium/Mu-Silicium) and its [pinned build guide](https://github.com/Project-Silicium/Mu-Silicium/blob/4bd8ae83bf37de41777f19e0777db70f59383a6d/Building.md).
+- [Realme SALAA Android device tree](https://github.com/realme-mt6785-devs/android_device_realme_salaa) and the supplied live phone evidence.
+- [HakiOS MT6785](https://github.com/iSciFiLite/hakios-mt6785) for the intended consumer-side protocol contract.
+- SALAA source and imported Mu SEC helper files retain `BSD-2-Clause-Patent` notices; the audit tool remains MIT-licensed in [`LICENSE-CODE`](LICENSE-CODE). Preserve upstream notices for future imports.

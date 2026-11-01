@@ -1,0 +1,84 @@
+name: SALAA EDK II firmware build
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: salaa-edk2-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build-salaa:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 120
+    steps:
+      - name: Checkout SALAA port
+        uses: actions/checkout@v4
+        with:
+          path: salaa-port
+
+      - name: Checkout pinned Mu-Silicium workspace and submodules
+        uses: actions/checkout@v4
+        with:
+          repository: Project-Silicium/Mu-Silicium
+          ref: 4bd8ae83bf37de41777f19e0777db70f59383a6d
+          path: mu
+          submodules: recursive
+          fetch-depth: 1
+
+      - name: Overlay SALAA platform and build configuration
+        run: |
+          set -euo pipefail
+          cp -a salaa-port/source/. mu/
+          install -D salaa-port/Resources/Configs/Salaa.toml mu/Resources/Configs/Salaa.toml
+          mkdir -p build-logs output
+          git -C mu rev-parse HEAD | tee build-logs/mu-commit.txt
+          git -C salaa-port rev-parse HEAD | tee build-logs/salaa-commit.txt
+          python3 salaa-port/tools/audit-memory-map.py | tee build-logs/memory-map-audit.log
+
+      - name: Install Mu-Silicium EDK II dependencies
+        run: |
+          set -o pipefail
+          cd mu
+          ./setup_env.sh -p apt 2>&1 | tee "$GITHUB_WORKSPACE/build-logs/setup.log"
+
+      - name: Build SALAA DEBUG firmware on hosted runner
+        run: |
+          set -o pipefail
+          cd mu
+          python3 build_uefi.py -d Salaa -r DEBUG -c 2>&1 | tee "$GITHUB_WORKSPACE/build-logs/build.log"
+
+      - name: Verify and stage the generated FD
+        run: |
+          set -euo pipefail
+          fd="$(find mu/Build/SalaaPkg -type f -path '*/FV/SALAA_EFI.fd' -print -quit)"
+          test -n "$fd"
+          python3 salaa-port/tools/verify-uefi-fd.py "$fd" | tee output/verification.json
+          cp "$fd" output/SALAA_EFI.actions-${GITHUB_SHA}.fd
+          sha256sum output/SALAA_EFI.actions-${GITHUB_SHA}.fd | tee output/SHA256SUMS
+          cp build-logs/mu-commit.txt build-logs/salaa-commit.txt output/
+          cp build-logs/build.log output/
+
+      - name: Upload firmware artifact
+        if: success()
+        uses: actions/upload-artifact@v4
+        with:
+          name: SALAA_EFI.actions-${{ github.sha }}
+          path: output/*
+          if-no-files-found: error
+          retention-days: 30
+
+      - name: Upload build logs, including failed attempts
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: SALAA-edk2-logs-${{ github.sha }}
+          path: build-logs/
+          if-no-files-found: warn
+          retention-days: 30

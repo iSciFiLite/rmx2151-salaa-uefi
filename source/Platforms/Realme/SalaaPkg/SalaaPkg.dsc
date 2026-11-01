@@ -19,17 +19,15 @@
 !include Silicon/MediaTek/MT6785Pkg/MT6785Pkg.dsc.inc
 
 [PcdsFixedAtBuild]
-  # F.11 boot.img and LK embedded DTB /memory reg: base 0x40000000, size 0x3E605000.
-  # F.11 scatter: LK=0x56500000, LK2=0x56700000, boot=0x56900000,
-  # DTBO=0x59100000 (flash offsets, not DRAM load addresses).
-  # ASSUMPTION: F.11 does not define a UEFI payload load contract or reserve
-  # an FD/stack region. boot.img's 0x40080000 kernel address is for Android's
-  # kernel and cannot establish where a separately loaded UEFI FD will execute.
+  # User-provided live RMX2151L1 evidence: /memory base 0x40000000, size 8 GiB.
+  # The F.11 base DTB says 0x3E605000, but its live Android tree and RAM map
+  # show the 8 GiB configuration. This PCD is only a physical-address bound;
+  # MemoryMapLib below exposes the observed non-overlapping System RAM ranges.
   gArmTokenSpaceGuid.PcdSystemMemoryBase|0x40000000
-  gArmTokenSpaceGuid.PcdSystemMemorySize|0x3E605000
-  # ASSUMPTION: use a 4 MiB FD window at 0x40000000 to fit the 2 MiB DXE FV
-  # nested inside the outer FV plus the SEC module. F.11 defines no UEFI
-  # payload load contract or reservation; this is a source-layout choice.
+  gArmTokenSpaceGuid.PcdSystemMemorySize|0x200000000
+  # The existing 4 MiB FD layout places the stack immediately after it. These
+  # addresses are usable only when LK loads SALAA_EFI.fd as the replacement
+  # boot payload at 0x40000000; they overlap the stock Android kernel layout.
   gArmTokenSpaceGuid.PcdFdBaseAddress|0x40000000
   gArmTokenSpaceGuid.PcdFdSize|0x00400000
   gArmTokenSpaceGuid.PcdFvBaseAddress|0x40000000
@@ -54,10 +52,6 @@
   gSiliciumPkgTokenSpaceGuid.PcdSmbiosSystemBoardModel|"SALAA"
 
 [Components]
-# DEVIATION: ResetSystemRuntimeDxe omitted for first bring-up; Mu_Basecore
-# version consumes HwResetSystemLib which has no implementation in the
-# attached tree. Restore after Shell boots by pointing MdeModulePkg
-# resolution to edk2 instead of Mu_Basecore.
   Silicon/MediaTek/MT6785Pkg/Sec/PlatformSec.inf
   MdeModulePkg/Core/Dxe/DxeMain.inf
   MdeModulePkg/Universal/PCD/Dxe/Pcd.inf
@@ -66,6 +60,7 @@
   MdeModulePkg/Universal/SecurityStubDxe/SecurityStubDxe.inf
   MdeModulePkg/Universal/WatchdogTimerDxe/WatchdogTimer.inf
   MdeModulePkg/Universal/CapsuleRuntimeDxe/CapsuleRuntimeDxe.inf
+  MdeModulePkg/Universal/ResetSystemRuntimeDxe/ResetSystemRuntimeDxe.inf
   MdeModulePkg/Universal/ReportStatusCodeRouter/RuntimeDxe/ReportStatusCodeRouterRuntimeDxe.inf
   MdeModulePkg/Universal/StatusCodeHandler/RuntimeDxe/StatusCodeHandlerRuntimeDxe.inf
   MdeModulePkg/Universal/Variable/RuntimeDxe/VariableRuntimeDxe.inf
@@ -77,8 +72,16 @@
   MdeModulePkg/Universal/DevicePathDxe/DevicePathDxe.inf
   MdeModulePkg/Universal/Console/ConPlatformDxe/ConPlatformDxe.inf
   MdeModulePkg/Universal/Console/ConSplitterDxe/ConSplitterDxe.inf
+  MdeModulePkg/Universal/Console/GraphicsConsoleDxe/GraphicsConsoleDxe.inf
   MdeModulePkg/Universal/HiiDatabaseDxe/HiiDatabaseDxe.inf
-  Silicon/MediaTek/MT6785Pkg/Drivers/ShellBootDxe/ShellBootDxe.inf
+  MdeModulePkg/Universal/Disk/DiskIoDxe/DiskIoDxe.inf
+  MdeModulePkg/Universal/Disk/PartitionDxe/PartitionDxe.inf
+  MdeModulePkg/Universal/Disk/UnicodeCollation/EnglishDxe/EnglishDxe.inf
+  FatPkg/EnhancedFatDxe/Fat.inf
+  MdeModulePkg/Bus/Usb/UsbBusDxe/UsbBusDxe.inf
+  MdeModulePkg/Bus/Usb/UsbKbDxe/UsbKbDxe.inf
+  MdeModulePkg/Bus/Usb/UsbMassStorageDxe/UsbMassStorageDxe.inf
+  SiliciumPkg/Drivers/SimpleFbDxe/SimpleFbDxe.inf
   ArmPkg/Drivers/ArmGicDxe/ArmGicDxe.inf
   ArmPkg/Drivers/TimerDxe/TimerDxe.inf
   MdeModulePkg/Universal/BdsDxe/BdsDxe.inf

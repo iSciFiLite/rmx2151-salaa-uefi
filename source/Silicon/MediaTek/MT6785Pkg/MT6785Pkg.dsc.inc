@@ -10,31 +10,10 @@
 [Defines]
   USE_PHYSICAL_TIMER                         = 1
 
-# DEVIATION: use a SALAA-owned subset of shared defaults instead of the full upstream DSC include.
-# The upstream include injects unrelated components and uses package-root aliases that are wrong
-# for this workspace; SalaaPkg.dsc owns the complete component list.
-!include SalaaPkg/Include/SalaaMuDefaults.dsc.inc
-
-# The supplied SiliciumNullPkg instance provides the SEC PlatformPeim FV HOB.
-# Explicitly select the actual upstream implementation for this target.
-[LibraryClasses]
-  PlatformPeiLib|Silicon/Silicium/SiliciumNullPkg/Library/PlatformPeiLibNull/PlatformPeiLibNull.inf
-
-# The supplied Mu_Basecore implementation is under ArmPlatformPkg/MemoryInitPei.
-# Override the stale SiliciumPkg-local path from the shared include.
-[LibraryClasses]
-  MemoryInitPeiLib|ArmPlatformPkg/MemoryInitPei/MemoryInitPeiLib.inf
+!include SiliciumPkg/SiliciumPkg.dsc.inc
 
 [PcdsFixedAtBuild]
   gEfiMdeModulePkgTokenSpaceGuid.PcdAcpiDefaultOemId|"MTK   "
-
-[LibraryClasses]
-  # Explicit repository-root paths for the supplied Mu package trees.
-  MsBootManagerSettingsLib|Common/Mu/PcBdsPkg/Library/BootManagerSettingsDxeLibNull/BootManagerSettingsDxeLibNull.inf
-  MsNetworkDependencyLib|Common/Mu/PcBdsPkg/Library/MsNetworkDependencyLib/MsNetworkDependencyLib.inf
-  MsAltBootLib|Common/Mu_OEM_Sample/OemPkg/Library/MsAltBootLib/MsAltBootLib.inf
-  UefiBootManagerLib|MdeModulePkg/Library/UefiBootManagerLib/UefiBootManagerLib.inf
-  ArmSmcLib|MdePkg/Library/ArmSmcLib/ArmSmcLib.inf
 
 [BuildOptions]
   *_*_AARCH64_CC_FLAGS = -march=armv8.2-a+crypto+rcpc
@@ -53,8 +32,10 @@
   gSiliciumPkgTokenSpaceGuid.PcdSmbiosProcessorPartNumber|"MT6785"
 
 [LibraryClasses]
-  PlatformSecLib|Silicon/MediaTek/MT6785Pkg/Library/PlatformSecLib/PlatformSecLib.inf
-  MemoryMapLib|Silicon/MediaTek/MT6785Pkg/Library/MemoryMapLib/MemoryMapLib.inf
-  SerialPortLib|Silicon/MediaTek/MT6785Pkg/Library/SerialPortLib/SerialPortLib.inf
+  PlatformSecLib|SalaaPkg/Library/PlatformSecLib/PlatformSecLib.inf
+  MemoryMapLib|SalaaPkg/Library/MemoryMapLib/MemoryMapLib.inf
+  # No UART driver is enabled until the RMX2151 UART clock/pin and handoff
+  # have been verified. Keep debug output fail-silent rather than MMIO-guess.
+  SerialPortLib|MdePkg/Library/BaseSerialPortLibNull/BaseSerialPortLibNull.inf
 
 # SALAA SEC rule: emit the SEC module as a PE32 section in the firmware volume.
