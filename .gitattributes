@@ -1,0 +1,2 @@
+# Preserve exact linker-map whitespace from the v0.1.0 release archive.
+artifacts/release-v0.1.0/*.map whitespace=-trailing-space

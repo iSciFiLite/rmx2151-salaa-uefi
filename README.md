@@ -16,7 +16,7 @@ A separate [Nemo UEFI repository](https://github.com/iSciFiLite/rmx2001-nemo-uef
 | UFS Block I/O | No MT6785 UFS DXE driver | No | No | Unsupported |
 | PSCI / secondary CPUs | Generic EDK components selected | No | No | Unverified |
 | HakiOS boot | No | No | No | **Not compatible yet** |
-| Firmware image | Historical generated output was removed | No reproducible output | No | Do not use |
+| Firmware image | `v0.1.0` release FD restored and provenance-pinned | Original local EDK II build succeeded; no hosted firmware build yet | No | Historical artifact; not device-verified |
 
 “Present in source” means files/configuration are checked in. It does not mean the code compiles or runs. The hosted workflow audits the package and its claims; it is not an EDK II firmware build or an emulator/device test.
 
@@ -54,7 +54,9 @@ The Realme 7 has board/display/touch variants. The target must be identified fro
 
 - Added a SALAA-named EDK II DSC/FDF, MT6785 DSC include, SEC module, entry assembly, and PlatformSecLib source.
 - Recorded MT6785 / SALAA facts and the upstream Mu-Silicium / EDK II starting point.
-- Added a GitHub Actions source/claim audit. It checks repository hygiene and surfaces unresolved source dependencies.
+- Completed an EDK II `DEBUG_GCC` build in the original Ubuntu workspace and published the output in release `v0.1.0`.
+- Restored the release FD plus SEC EFI/DLL/map outputs under `artifacts/release-v0.1.0/`, with filenames and hashes that distinguish them from future Actions output.
+- Added a GitHub Actions source/claim audit. It checks repository hygiene, preserves the release FD checksum, and surfaces unresolved source dependencies.
 - Separated Nemo documentation into [its own repository](https://github.com/iSciFiLite/rmx2001-nemo-uefi).
 
 ### Not done
@@ -65,7 +67,7 @@ The Realme 7 has board/display/touch variants. The target must be identified fro
 - No verification of PSCI, CPU start, firmware boot services, shell, storage, or recovery.
 - No HakiOS boot or physical-device validation.
 
-The old tracked `SALAA_EFI.fd`, SEC binaries, linker map, and build tree were generated in an environment not reproducible from this checkout. They have been removed from the source branch because their provenance and handoff behavior are insufficient for safe distribution. No replacement firmware binary is published.
+The v0.1.0 release remains available and its generated outputs are restored in this repository under `artifacts/release-v0.1.0/`. These are historical build outputs, not a device-verified firmware release. The current source checkout still lacks dependencies required to reproduce that build. No new Actions-built firmware image is published yet.
 
 ## Roadmap
 
@@ -93,7 +95,7 @@ A green source-audit action closes none of gates 2–9. Those gates remain visib
 
 ## Hosted checks
 
-The [SALAA source audit workflow](https://github.com/iSciFiLite/rmx2151-salaa-uefi/actions/workflows/source-audit.yml) runs on pushes, pull requests, and manual dispatch. A [hosted run](https://github.com/iSciFiLite/rmx2151-salaa-uefi/actions/runs/41254374712) passed the repository/status audit for commit `404bc78`; it reports unresolved source references and checks that unverified firmware binaries are not committed. It does **not** compile a firmware image, emulate the handset, or verify device behavior. This repository does not currently have a successful hosted UEFI build to report.
+The [SALAA source audit workflow](https://github.com/iSciFiLite/rmx2151-salaa-uefi/actions/workflows/source-audit.yml) runs on pushes, pull requests, and manual dispatch. A [hosted run](https://github.com/iSciFiLite/rmx2151-salaa-uefi/actions/runs/41254374712) passed the repository/status audit for commit `404bc78`; it verifies the restored release FD and reports unresolved source references. It does **not** compile a firmware image, emulate the handset, or verify device behavior. A separate hosted EDK II build is being added; until it succeeds, the v0.1.0 release image is the only preserved firmware output.
 
 ## Development and safety
 

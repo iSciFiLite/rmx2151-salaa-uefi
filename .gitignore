@@ -8,3 +8,4 @@ Conf/
 *.pdb
 *.img
 *.bin
+!artifacts/release-v0.1.0/SALAA_EFI.release-v0.1.0.fd

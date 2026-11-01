@@ -2,6 +2,7 @@
 # SPDX-License-Identifier: MIT
 """Audit SALAA UEFI source claims without claiming to build or test firmware."""
 from pathlib import Path
+import hashlib
 import os
 import subprocess
 
@@ -35,12 +36,21 @@ try:
 except subprocess.CalledProcessError as exc:
     raise SystemExit("This audit must run in a Git checkout") from exc
 binary_suffixes = {".fd", ".efi", ".dll", ".map", ".pdb", ".img", ".bin"}
+release_prefix = "artifacts/release-v0.1.0/"
 committed_artifacts = [
     p for p in tracked
     if p and (Path(p).suffix.lower() in binary_suffixes or p.startswith("build/Build/"))
+    and not p.startswith(release_prefix)
 ]
 if committed_artifacts:
     raise SystemExit("Unverified generated artifacts are tracked: " + ", ".join(committed_artifacts))
+
+release_fd = root / "artifacts/release-v0.1.0/SALAA_EFI.release-v0.1.0.fd"
+if not release_fd.is_file() or release_fd.stat().st_size != 4_194_304:
+    raise SystemExit("The preserved v0.1.0 release FD is missing or has the wrong size")
+release_hash = hashlib.sha256(release_fd.read_bytes()).hexdigest()
+if release_hash != "5e6ab9e0e9376b634e5393b39b9889c671e746a49f3f582c90b858b75bf1ace7":
+    raise SystemExit("The preserved v0.1.0 release FD does not match its recorded SHA-256")
 
 # Report known gaps. This is deliberately a source audit, not an EDK II build.
 blockers = [
