@@ -148,8 +148,11 @@ also lacked a DEC package descriptor. After adding `SalaaPkg.dec`, a later run
 advanced past that check but failed because the DSC pointed to
 `Platforms/Realme/SalaaPkg/Library/PlatformSecLib/PlatformSecLib.inf`, which
 does not exist. The existing MT6785 package INF is now selected and the
-SALAA-specific no-op implementation is colocated with it. The workflow checks
-these files before setup; CI must confirm the source closure and continue to
-compilation. No C compilation has yet completed. A successful compile will
-only prove source/toolchain integration. It will not verify SEC entry, memory
+SALAA-specific no-op implementation is colocated with it. The fourth hosted
+run passed source-path validation and reached EDK library dependency
+resolution; it then found missing mappings for the standard Shell library
+classes. The DSC now maps those classes to the upstream EDK II implementations.
+CI must verify the corrected dependency closure and continue to compilation.
+No C compilation has yet completed. A successful compile will only prove
+source/toolchain integration. It will not verify SEC entry, memory
 reservations, GOP, UFS, PSCI, recovery, or booting an OS.

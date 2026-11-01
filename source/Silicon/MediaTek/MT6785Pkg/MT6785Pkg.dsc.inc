@@ -37,5 +37,10 @@
   # No UART driver is enabled until the RMX2151 UART clock/pin and handoff
   # have been verified. Keep debug output fail-silent rather than MMIO-guess.
   SerialPortLib|MdePkg/Library/BaseSerialPortLibNull/BaseSerialPortLibNull.inf
+  # Standard EDK II Shell application libraries (matches ShellPkg's DSC).
+  ShellLib|ShellPkg/Library/UefiShellLib/UefiShellLib.inf
+  ShellCommandLib|ShellPkg/Library/UefiShellCommandLib/UefiShellCommandLib.inf
+  HandleParsingLib|ShellPkg/Library/UefiHandleParsingLib/UefiHandleParsingLib.inf
+  OrderedCollectionLib|MdePkg/Library/BaseOrderedCollectionRedBlackTreeLib/BaseOrderedCollectionRedBlackTreeLib.inf
 
 # SALAA SEC rule: emit the SEC module as a PE32 section in the firmware volume.
