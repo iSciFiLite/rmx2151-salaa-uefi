@@ -87,7 +87,7 @@ The v0.1.0 release remains available and its generated outputs are restored in t
 | `SalaaSec.release-v0.1.0.efi` | Release archive SEC output; SHA-256 recorded in [`PROVENANCE.md`](artifacts/release-v0.1.0/PROVENANCE.md) |
 | `SalaaSec-PlatformSec.release-v0.1.0.efi/.dll/.map` | Release archive module outputs and linker map; hashes recorded in [`PROVENANCE.md`](artifacts/release-v0.1.0/PROVENANCE.md) |
 
-The attached [`salaaPkg-v0.1.0.zip`](https://github.com/iSciFiLite/rmx2151-salaa-uefi/releases/download/v0.1.0/salaaPkg-v0.1.0.zip) remains unchanged. Its SHA-256 is `bfb8dd33d8082a2a3d81bce43e3e6c8e82b4fa900208566a4268e34f0d93dba1`. An Actions-built output, if produced, will have a separate `actions-<commit>` name and checksum.
+The attached [`salaaPkg-v0.1.0.zip`](https://github.com/iSciFiLite/rmx2151-salaa-uefi/releases/download/v0.1.0/salaaPkg-v0.1.0.zip) remains unchanged. Its SHA-256 is `bfb8dd33d8082a2a3d81bce43e3e6c8e82b4fa900208566a4268e34f0d93dba1`. The FD is also available as a [separate release download](https://github.com/iSciFiLite/rmx2151-salaa-uefi/releases/download/v0.1.0/SALAA_EFI.release-v0.1.0.fd). An Actions-built output, if produced, will have a separate `actions-<commit>` name and checksum.
 
 ## Roadmap
 
