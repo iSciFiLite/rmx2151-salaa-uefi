@@ -129,7 +129,7 @@ build log.
 
 To make a clean hosted compile possible, this repository now includes:
 
-- A SALAA `DeviceBuild.py` and Mu config, using Mu-Silicium pinned at
+- A SALAA DEC, `DeviceBuild.py`, and Mu config, using Mu-Silicium pinned at
   `4bd8ae83bf37de41777f19e0777db70f59383a6d`.
 - A SALAA-local DXE firmware-volume list and an explicit set of generic EDK II
   modules; the absent custom `ShellBootDxe` is replaced by standard BDS/Shell.
@@ -142,7 +142,10 @@ To make a clean hosted compile possible, this repository now includes:
   workspace, installs upstream build dependencies, invokes the EDK II build,
   verifies FD structure, and preserves the output/logs as Actions artifacts.
 
-The hosted build has not yet completed at the time of this evidence update.
-An Actions compile will only prove source/toolchain integration. It will not
+The first hosted build reached Mu setup and failed in the pre-build debug
+macro plugin before any C compilation because the platform directory lacked a
+DEC package descriptor. `SalaaPkg.dec` has now been added; the next hosted
+run must confirm package discovery and reveal any further EDK II errors. A
+successful compile will only prove source/toolchain integration. It will not
 verify SEC entry, memory reservations, GOP, UFS, PSCI, recovery, or booting an
 OS.

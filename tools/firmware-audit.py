@@ -38,6 +38,7 @@ if re.search(r"androidboot\.serialno=[^\s\"']+|serialno\s*=\s*\"[^\"]+\"", evide
 
 required_files = (
     "source/Platforms/Realme/SalaaPkg/SalaaPkg.dsc",
+    "source/Platforms/Realme/SalaaPkg/SalaaPkg.dec",
     "source/Platforms/Realme/SalaaPkg/SalaaPkg.fdf",
     "source/Platforms/Realme/SalaaPkg/DeviceBuild.py",
     "source/Platforms/Realme/SalaaPkg/Include/DXE.inc",

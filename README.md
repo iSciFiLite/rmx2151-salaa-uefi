@@ -6,7 +6,7 @@ An experimental EDK II / Mu-Silicium firmware port for the Realme 7 SALAA family
 
 | Area | Current implementation | Evidence / limit |
 |---|---|---|
-| EDK II platform | SALAA DSC/FDF, Mu `DeviceBuild.py`, pinned Mu-Silicium workflow | First hosted build runs after this commit; no device result yet |
+| EDK II platform | SALAA DEC/DSC/FDF, Mu `DeviceBuild.py`, pinned Mu-Silicium workflow | First hosted run found a missing platform DEC before C compilation; the package descriptor fix is queued |
 | SEC and early memory | AArch64 SEC plus static RAM/MMIO map from the supplied phone evidence | Entry registers and LK load/entry addresses remain unknown |
 | RAM size | 8 GiB physical span (`0x40000000` + `0x200000000`) | Live DT and `MemTotal` agree; F.11 base DTB is an older/different 1 GiB declaration |
 | GOP | SimpleFbDxe consumes the observed bootloader framebuffer reservation | Does not initialize DSI/panel; format, stride, and lifetime are unverified |
@@ -20,15 +20,15 @@ The current target identity from Termux is `ro.product.model=RMX2151L1`; the bui
 
 ## Work completed
 
-- Added a reproducible GitHub Actions build path using Mu-Silicium pinned at [`4bd8ae83`](https://github.com/Project-Silicium/Mu-Silicium/commit/4bd8ae83bf37de41777f19e0777db70f59383a6d), including recursive submodules, hosted dependency installation, EDK II build logs, FD structure checks, and an artifact upload.
-- Reconstructed the missing platform `DeviceBuild.py`, FD config, DXE firmware-volume list, SEC helper sources, and a SALAA memory-map library. The SEC platform hook avoids undocumented MT6785 register writes.
+- Added a GitHub Actions build path using Mu-Silicium pinned at [`4bd8ae83`](https://github.com/Project-Silicium/Mu-Silicium/commit/4bd8ae83bf37de41777f19e0777db70f59383a6d), including recursive submodules, hosted dependency installation, EDK II build logs, FD structure checks, and an artifact upload. The first run completed Mu setup but stopped before compilation because the platform DEC was missing; the DEC fix is queued for the next run.
+- Reconstructed the missing platform DEC/`DeviceBuild.py`, FD config, DXE firmware-volume list, SEC helper sources, and a SALAA memory-map library. The SEC platform hook avoids undocumented MT6785 register writes.
 - Used the supplied live DT plus current Termux memory evidence to correct the physical-memory bound to 8 GiB and define observed Android-visible System RAM ranges. The F.11 base DTB still differs and is not assumed to be the active tree.
 - Enabled generic UEFI boot/runtime, BDS/Shell, graphics console/SimpleFb, reset, timer, disk filesystem, and USB class modules where upstream code exists. Generic class drivers do not replace missing SoC host-controller support.
 - Preserved the historical `v0.1.0` release files and hashes unchanged. They remain user-reported local-build outputs, not hardware-verified firmware.
 
 ## Still incomplete
 
-- Hosted EDK II compilation: awaiting the first `SALAA EDK II firmware build` run. A compile error must be repaired from the Action logs before calling the build reproducible.
+- Hosted EDK II compilation: the first `SALAA EDK II firmware build` run reached the platform pre-build and stopped on package identification, before C compilation. A package DEC has been added; the next hosted run must confirm the fix and uncover any remaining compile errors.
 - SEC entry contract: no LK trace identifies entry PC, exception level, stack pointer, argument registers, DT pointer, or FD load address. `0x40000000` is also the stock Android kernel load region; the FD must replace the kernel payload rather than coexist with it.
 - RAM reservations: the current map is reconstructed from Android's `/proc/iomem`; one pasted System RAM interval was inverted and is omitted pending a short filtered recheck. The complete pre-OS LK reservation map is not known.
 - Display: the live tree reports a framebuffer reservation at `0x75d30000` (`0x02cd0000` bytes), but SimpleFb's 1080×2400×32-bit assumptions and pixel layout need on-device confirmation. DSI panel initialization is absent.
@@ -67,8 +67,8 @@ Artifacts are named `SALAA_EFI.actions-<commit>.fd` and retained by Actions for 
 
 | Gate | Required work | State |
 |---|---|---|
-| Source closure and pinned workspace | Platform build files and upstream SEC helpers are now present; complete through hosted compile | **In progress** |
-| Hosted clean build | Build with pinned Mu-Silicium on GitHub Actions, fix errors, retain exact logs and FD hash | **Pending first run** |
+| Source closure and pinned workspace | Platform build files and upstream SEC helpers are present; first CI error was the missing platform DEC, now fixed | **In progress** |
+| Hosted clean build | Build with pinned Mu-Silicium on GitHub Actions, fix errors, retain exact logs and FD hash | **Retry pending** |
 | SALAA boot contract | Confirm LK load/entry address, EL, SP, registers/DT pointer, and pre-OS reserved ranges | **Open — needs bootloader evidence** |
 | Memory map | Correct the one inverted `/proc/iomem` line and validate against LK/DT reservations | **Open** |
 | GOP | Confirm inherited framebuffer base, size, pixel format, stride, and display lifetime | **Open — hardware test** |

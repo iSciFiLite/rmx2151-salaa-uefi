@@ -1,0 +1,9 @@
+## @file
+# SALAA / Realme 7 RMX2151 platform package.
+# SPDX-License-Identifier: BSD-2-Clause-Patent
+##
+[Defines]
+  DEC_SPECIFICATION              = 0x00010005
+  PACKAGE_NAME                   = SalaaPkg
+  PACKAGE_GUID                   = 7362BA11-7F5A-4FF1-9D1C-2C9AA5C4E738
+  PACKAGE_VERSION                = 0.1
