@@ -152,10 +152,13 @@ SALAA-specific no-op implementation is colocated with it. The fourth hosted
 run passed source-path validation and reached EDK library dependency
 resolution; it then found missing mappings for standard Shell library
 classes. The DSC now maps those classes to upstream EDK II implementations.
-On the fifth run, the `build_uefi.py` step completed successfully. The next
-artifact-staging step searched the wrong output directory (`Build/SalaaPkg`
-instead of the DSC's `Build/SALAA`) and failed before FD verification/upload.
-The search now targets `Build/SALAA`; the next run must confirm the FD exists,
-passes signature/size checks, and is uploaded. A successful compile only
-proves source/toolchain integration; it does not verify SEC entry, memory
-reservations, GOP, UFS, PSCI, recovery, or booting an OS.
+The sixth hosted run completed `build_uefi.py` and passed the corrected output-path
+lookup, PI firmware-volume signature/length checks, and Actions upload. Run
+[41260823722](https://github.com/iSciFiLite/rmx2151-salaa-uefi/actions/runs/41260823722)
+built source commit `22554c432ba6ef7eca59c4733885ff30a56a7686` with Mu-Silicium
+commit `4bd8ae83bf37de41777f19e0777db70f59383a6d`. The 4 MiB FD SHA-256 is
+`4d0bdc13590f925d7558c923413bc4013f1107e3d4828180730594ebf74eb646`. It is
+available in the [hosted-build prerelease](https://github.com/iSciFiLite/rmx2151-salaa-uefi/releases/tag/v0.2.0-actions.22554c4)
+with verification metadata and logs. This verifies compile and image structure
+only, not SEC entry, memory reservations, GOP, UFS, PSCI, recovery, or booting
+an OS.

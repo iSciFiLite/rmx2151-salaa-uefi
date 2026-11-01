@@ -1,12 +1,12 @@
 # SALAA UEFI — Realme 7 / RMX2151
 
-An experimental EDK II / Mu-Silicium firmware port for the Realme 7 SALAA family (MediaTek MT6785, Helio G95). The repository contains a platform package and a hosted build workflow. A successful build would prove that EDK II can produce an FD; it would **not** prove that the FD can safely boot on a handset. Do not flash or chainload an image until the LK entry contract and recovery path are confirmed.
+An experimental EDK II / Mu-Silicium firmware port for the Realme 7 SALAA family (MediaTek MT6785, Helio G95). A hosted build now produces a structurally verified 4 MiB firmware volume. This confirms source/toolchain integration only; it does **not** prove that the FD can safely boot on a handset. Do not flash or chainload an image until the LK entry contract and recovery path are confirmed.
 
 ## Current result
 
 | Area | Current implementation | Evidence / limit |
 |---|---|---|
-| EDK II platform | SALAA DEC/DSC/FDF, Mu `DeviceBuild.py`, pinned Mu-Silicium workflow | Fifth hosted run completed the EDK II build step; FD staging then failed because the workflow searched the wrong output directory, now corrected for retry |
+| EDK II platform | SALAA DEC/DSC/FDF, Mu `DeviceBuild.py`, pinned Mu-Silicium workflow | GitHub Actions run [41260823722](https://github.com/iSciFiLite/rmx2151-salaa-uefi/actions/runs/41260823722) built the FD; size/signature checks passed |
 | SEC and early memory | AArch64 SEC plus static RAM/MMIO map from the supplied phone evidence | Entry registers and LK load/entry addresses remain unknown |
 | RAM size | 8 GiB physical span (`0x40000000` + `0x200000000`) | Live DT and `MemTotal` agree; F.11 base DTB is an older/different 1 GiB declaration |
 | GOP | SimpleFbDxe consumes the observed bootloader framebuffer reservation | Does not initialize DSI/panel; format, stride, and lifetime are unverified |
@@ -20,15 +20,15 @@ The current target identity from Termux is `ro.product.model=RMX2151L1`; the bui
 
 ## Work completed
 
-- Added a GitHub Actions build path using Mu-Silicium pinned at [`4bd8ae83`](https://github.com/Project-Silicium/Mu-Silicium/commit/4bd8ae83bf37de41777f19e0777db70f59383a6d), including recursive submodules, hosted dependency installation, EDK II build logs, FD structure checks, and an artifact upload. The first run lacked the SALAA package DEC and logged an unresolved SEC library INF; after adding the DEC, a later run showed the INF path still pointed to a nonexistent file. The DSC now selects the MT6785 package's existing INF and the no-op implementation is beside it; CI preflights these source paths before building.
+- Added a GitHub Actions build path using Mu-Silicium pinned at [`4bd8ae83`](https://github.com/Project-Silicium/Mu-Silicium/commit/4bd8ae83bf37de41777f19e0777db70f59383a6d), including recursive submodules, hosted dependency installation, EDK II build logs, FD structure checks, and artifact upload. Fixed the missing SALAA DEC, SEC library INF/source closure, Shell library mappings, and output path found across CI runs.
+- Built and verified `SALAA_EFI.actions-22554c432ba6ef7eca59c4733885ff30a56a7686.fd` on hosted Actions. It is published in the [experimental hosted-build prerelease](https://github.com/iSciFiLite/rmx2151-salaa-uefi/releases/tag/v0.2.0-actions.22554c4) with checksum, verification metadata, build log, and source/dependency commits. SHA-256: `4d0bdc13590f925d7558c923413bc4013f1107e3d4828180730594ebf74eb646`.
 - Reconstructed the missing platform DEC/`DeviceBuild.py`, FD config, DXE firmware-volume list, SEC helper sources, and a SALAA memory-map library. The SEC platform hook avoids undocumented MT6785 register writes.
 - Used the supplied live DT plus current Termux memory evidence to correct the physical-memory bound to 8 GiB and define observed Android-visible System RAM ranges. The F.11 base DTB still differs and is not assumed to be the active tree.
 - Enabled generic UEFI boot/runtime, BDS/Shell, graphics console/SimpleFb, reset, timer, disk filesystem, and USB class modules where upstream code exists. Generic class drivers do not replace missing SoC host-controller support.
-- Preserved the historical `v0.1.0` release files and hashes unchanged. They remain user-reported local-build outputs, not hardware-verified firmware.
+- Preserved the historical [`v0.1.0` release](https://github.com/iSciFiLite/rmx2151-salaa-uefi/releases/tag/v0.1.0) files and hashes unchanged. They remain user-reported local-build outputs, not hardware-verified firmware.
 
 ## Still incomplete
 
-- Hosted EDK II compilation: the fifth run completed the `build_uefi.py` step successfully after the source and Shell library fixes. The workflow then failed to stage the FD because it searched `Build/SalaaPkg` while the DSC output directory is `Build/SALAA`. The staging search now uses the declared output directory and prints found FD paths. CI must verify the FD signature/size and artifact upload.
 - SEC entry contract: no LK trace identifies entry PC, exception level, stack pointer, argument registers, DT pointer, or FD load address. `0x40000000` is also the stock Android kernel load region; the FD must replace the kernel payload rather than coexist with it.
 - RAM reservations: the current map is reconstructed from Android's `/proc/iomem`; the requested filtered recheck reproduced malformed `7df00000-7dffffff`, whose end is below its start. It remains excluded rather than guessed. The complete pre-OS LK reservation map is not known.
 - Display: the live tree reports a framebuffer reservation at `0x75d30000` (`0x02cd0000` bytes), but SimpleFb's 1080×2400×32-bit assumptions and pixel layout need on-device confirmation. DSI panel initialization is absent.
@@ -59,16 +59,16 @@ The enabled SimpleFb path may reuse a bootloader-initialized framebuffer without
 
 ## Build on GitHub Actions
 
-The [`SALAA EDK II firmware build`](.github/workflows/edk2-build.yml) workflow checks out Mu-Silicium at the pinned commit, recursively checks out its required submodules, overlays this platform, runs the upstream dependency setup, builds `DEBUG` with `build_uefi.py -d Salaa`, validates the PI firmware-volume signature/size, and uploads the FD, SHA-256, provenance, and logs. Failed runs also retain logs. The workflow does not run on this local Ubuntu machine.
+The [`SALAA EDK II firmware build`](.github/workflows/edk2-build.yml) workflow checks out Mu-Silicium at the pinned commit, recursively checks out its required submodules, overlays this platform, runs upstream dependency setup, builds `DEBUG` with `build_uefi.py -d Salaa`, validates the PI firmware-volume signature/size, and uploads the FD, SHA-256, provenance, and logs. Successful run [41260823722](https://github.com/iSciFiLite/rmx2151-salaa-uefi/actions/runs/41260823722) produced a 4 MiB FD with SHA-256 `4d0bdc13590f925d7558c923413bc4013f1107e3d4828180730594ebf74eb646`; it is preserved in the [hosted-build prerelease](https://github.com/iSciFiLite/rmx2151-salaa-uefi/releases/tag/v0.2.0-actions.22554c4). Failed runs retain logs. No local EDK II build was performed.
 
-Artifacts are named `SALAA_EFI.actions-<commit>.fd` and retained by Actions for 30 days. They are experimental compile outputs, not flashable releases. The old `v0.1.0` release is preserved separately. The [`source audit`](.github/workflows/source-audit.yml) checks documentation, source inventory, and old artifact provenance; it does not replace the EDK II build.
+Actions artifacts are named `SALAA_EFI.actions-<commit>.fd` and retained for 30 days. The prerelease keeps this build available longer. It is experimental and not verified to boot; the old `v0.1.0` release remains separate and unchanged. The [`source audit`](.github/workflows/source-audit.yml) checks documentation, source inventory, and old artifact provenance; it does not replace the EDK II build.
 
 ## Roadmap
 
 | Gate | Required work | State |
 |---|---|---|
 | Source closure and pinned workspace | SALAA DEC, MT6785 SEC library INF/implementation, memory-map INF, and upstream SEC helpers are present; workflow checks closure | **Passed source preflight** |
-| Hosted clean build | Build with pinned Mu-Silicium on GitHub Actions, verify generated FD, retain artifact and hash | **EDK build passed; FD staging retry queued** |
+| Hosted clean build | Build with pinned Mu-Silicium on GitHub Actions, verify generated FD, retain artifact and hash | **Passed** — 4 MiB FD, `_FVH`, SHA-256 recorded in prerelease |
 | SALAA boot contract | Confirm LK load/entry address, EL, SP, registers/DT pointer, and pre-OS reserved ranges | **Open — needs bootloader evidence** |
 | Memory map | Keep malformed `7df00000-7dffffff` excluded; validate Android RAM extents against LK/DT reservations | **Open** |
 | GOP | Confirm inherited framebuffer base, size, pixel format, stride, and display lifetime | **Open — hardware test** |
