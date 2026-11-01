@@ -92,6 +92,7 @@ blockers = [
     ("SalaaPkg/Include/SalaaMuDefaults.dsc.inc", "source/Platforms/Realme/SalaaPkg/Include/SalaaMuDefaults.dsc.inc"),
     ("MT6785Pkg/Library/MemoryMapLib/MemoryMapLib.inf", "source/Silicon/MediaTek/MT6785Pkg/Library/MemoryMapLib/MemoryMapLib.inf"),
     ("MT6785Pkg/Library/SerialPortLib/SerialPortLib.inf", "source/Silicon/MediaTek/MT6785Pkg/Library/SerialPortLib/SerialPortLib.inf"),
+    ("MT6785Pkg/Library/PlatformSecLib/PlatformSec.c", "source/Silicon/MediaTek/MT6785Pkg/Library/PlatformSecLib/PlatformSec.c"),
     ("MT6785Pkg/Drivers/ShellBootDxe/ShellBootDxe.inf", "source/Silicon/MediaTek/MT6785Pkg/Drivers/ShellBootDxe/ShellBootDxe.inf"),
     ("MT6785Pkg/Sec/Sec.h", "source/Silicon/MediaTek/MT6785Pkg/Sec/Sec.h"),
     ("MT6785Pkg/Sec/AArch64/ArchSec.c", "source/Silicon/MediaTek/MT6785Pkg/Sec/AArch64/ArchSec.c"),

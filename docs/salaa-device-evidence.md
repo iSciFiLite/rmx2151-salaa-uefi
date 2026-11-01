@@ -52,7 +52,8 @@ package, `SalaaPkg/Include/DXE.inc`,
 `SalaaPkg/Include/SalaaMuDefaults.dsc.inc`,
 `MT6785Pkg/Library/MemoryMapLib`,
 `MT6785Pkg/Library/SerialPortLib`, `MT6785Pkg/Drivers/ShellBootDxe`, SEC's
-`Sec.h` and `AArch64/{ArchSec.c,Exception.S,Helper.S}`, or the original
+`Sec.h` and `AArch64/{ArchSec.c,Exception.S,Helper.S}`, the
+`PlatformSecLib/PlatformSec.c` implementation, or the original
 successful build log. It also provides no Mu workspace manifest or pinned
 submodule set. The separately supplied `fail.log` is a Linux
 kernel `Image.gz` failure log, not an EDK II success log. The separate
