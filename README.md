@@ -69,6 +69,16 @@ The Realme 7 has board/display/touch variants. The target must be identified fro
 
 The v0.1.0 release remains available and its generated outputs are restored in this repository under `artifacts/release-v0.1.0/`. These are historical build outputs, not a device-verified firmware release. The current source checkout still lacks dependencies required to reproduce that build. No new Actions-built firmware image is published yet.
 
+### Preserved v0.1.0 outputs
+
+| File | Origin / SHA-256 |
+|---|---|
+| [`SALAA_EFI.release-v0.1.0.fd`](artifacts/release-v0.1.0/SALAA_EFI.release-v0.1.0.fd) | Published `v0.1.0` release archive; `5e6ab9e0e9376b634e5393b39b9889c671e746a49f3f582c90b858b75bf1ace7` |
+| `SalaaSec.release-v0.1.0.efi` | Release archive SEC output; SHA-256 recorded in [`PROVENANCE.md`](artifacts/release-v0.1.0/PROVENANCE.md) |
+| `SalaaSec-PlatformSec.release-v0.1.0.efi/.dll/.map` | Release archive module outputs and linker map; hashes recorded in [`PROVENANCE.md`](artifacts/release-v0.1.0/PROVENANCE.md) |
+
+The attached [`salaaPkg-v0.1.0.zip`](https://github.com/iSciFiLite/rmx2151-salaa-uefi/releases/download/v0.1.0/salaaPkg-v0.1.0.zip) remains unchanged. Its SHA-256 is `bfb8dd33d8082a2a3d81bce43e3e6c8e82b4fa900208566a4268e34f0d93dba1`. An Actions-built output, if produced, will have a separate `actions-<commit>` name and checksum.
+
 ## Roadmap
 
 | Gate | Work required | State |
@@ -95,7 +105,7 @@ A green source-audit action closes none of gates 2–9. Those gates remain visib
 
 ## Hosted checks
 
-The [SALAA source audit workflow](https://github.com/iSciFiLite/rmx2151-salaa-uefi/actions/workflows/source-audit.yml) runs on pushes, pull requests, and manual dispatch. A [hosted run](https://github.com/iSciFiLite/rmx2151-salaa-uefi/actions/runs/41254374712) passed the repository/status audit for commit `404bc78`; it verifies the restored release FD and reports unresolved source references. It does **not** compile a firmware image, emulate the handset, or verify device behavior. A separate hosted EDK II build is being added; until it succeeds, the v0.1.0 release image is the only preserved firmware output.
+The [SALAA source audit workflow](https://github.com/iSciFiLite/rmx2151-salaa-uefi/actions/workflows/source-audit.yml) runs on pushes, pull requests, and manual dispatch. It verifies the preserved release FD checksum and reports unresolved source references. It does **not** compile a firmware image, emulate the handset, or verify device behavior. A reproducible hosted EDK II build remains open because the source dependencies listed above are absent from the published checkout.
 
 ## Development and safety
 

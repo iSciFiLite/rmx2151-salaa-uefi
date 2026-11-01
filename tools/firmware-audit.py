@@ -36,11 +36,14 @@ try:
 except subprocess.CalledProcessError as exc:
     raise SystemExit("This audit must run in a Git checkout") from exc
 binary_suffixes = {".fd", ".efi", ".dll", ".map", ".pdb", ".img", ".bin"}
-release_prefix = "artifacts/release-v0.1.0/"
+allowed_artifact_prefixes = (
+    "artifacts/release-v0.1.0/",
+    "artifacts/actions/",
+)
 committed_artifacts = [
     p for p in tracked
     if p and (Path(p).suffix.lower() in binary_suffixes or p.startswith("build/Build/"))
-    and not p.startswith(release_prefix)
+    and not p.startswith(allowed_artifact_prefixes)
 ]
 if committed_artifacts:
     raise SystemExit("Unverified generated artifacts are tracked: " + ", ".join(committed_artifacts))
