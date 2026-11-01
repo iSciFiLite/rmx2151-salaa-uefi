@@ -2,7 +2,7 @@ name: SALAA HakiOS UEFI integration build
 
 on:
   push:
-    branches: [main]
+    branches: [main, development]
     paths:
       - '.github/workflows/hakios-uefi-build.yml'
       - '.github/workflows/edk2-build.yml'
