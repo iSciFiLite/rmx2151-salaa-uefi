@@ -211,21 +211,56 @@ SerialPortPoll (
 }
 
 /**
-  Set line-control attributes.  This stub honours only baud-rate
-  requests; other fields are left at the initialised 8N1 values.
+  Set new attributes on the serial device.
 
-  @param[in,out] BaudRate    Requested baud (in) / set baud (out).
-  @param[in,out] ReceiveFifoDepth  Ignored (out = 32 always).
-  @param[in,out] Timeout     Ignored.
-  @param[in,out] Parity      Ignored (out = NoParity).
-  @param[in,out] DataBits    Ignored (out = 8).
-  @param[in,out] StopBits    Ignored (out = OneStopBit).
+  @param[in] Control  Control bits to set.
 
-  @retval RETURN_SUCCESS  Always.
+  @retval RETURN_SUCCESS      The new attributes were set.
+  @retval RETURN_UNSUPPORTED  Operation not supported.
 **/
 RETURN_STATUS
 EFIAPI
 SerialPortSetControl (
+  IN UINT32  Control
+  )
+{
+  return RETURN_UNSUPPORTED;
+}
+
+/**
+  Retrieve the status of the control bits on a serial device.
+
+  @param[out] Control  A pointer to return the current control signals.
+
+  @retval RETURN_SUCCESS      The control bits were read.
+  @retval RETURN_UNSUPPORTED  Operation not supported.
+**/
+RETURN_STATUS
+EFIAPI
+SerialPortGetControl (
+  OUT UINT32  *Control
+  )
+{
+  return RETURN_UNSUPPORTED;
+}
+
+/**
+  Sets the baud rate, receive FIFO depth, transmit/receive time out, parity,
+  data bits, and stop bits on a serial device.
+
+  @param[in,out] BaudRate           The requested baud rate.
+  @param[in,out] ReceiveFifoDepth   The requested depth of the FIFO on receive side.
+  @param[in,out] Timeout            The requested time out for a single character in microseconds.
+  @param[in,out] Parity             The type of parity to use.
+  @param[in,out] DataBits           The number of data bits to use.
+  @param[in,out] StopBits           The number of stop bits to use.
+
+  @retval RETURN_SUCCESS            The new attributes were set.
+  @retval RETURN_UNSUPPORTED        Operation not supported.
+**/
+RETURN_STATUS
+EFIAPI
+SerialPortSetAttributes (
   IN OUT UINT64              *BaudRate,
   IN OUT UINT32              *ReceiveFifoDepth,
   IN OUT UINT32              *Timeout,
@@ -239,37 +274,5 @@ SerialPortSetControl (
   if (DataBits         != NULL) { *DataBits          = 8; }
   if (StopBits         != NULL) { *StopBits          = OneStopBit; }
   if (BaudRate         != NULL) { *BaudRate          = 115200; }
-  return RETURN_SUCCESS;
-}
-
-/**
-  Get current line-control attributes.
-
-  @param[out] BaudRate           Set to 115200.
-  @param[out] ReceiveFifoDepth   Set to 32.
-  @param[out] Timeout            Set to 1000000 (1 second in microseconds).
-  @param[out] Parity             Set to NoParity.
-  @param[out] DataBits           Set to 8.
-  @param[out] StopBits           Set to OneStopBit.
-
-  @retval RETURN_SUCCESS  Always.
-**/
-RETURN_STATUS
-EFIAPI
-SerialPortGetControl (
-  OUT UINT64              *BaudRate,
-  OUT UINT32              *ReceiveFifoDepth,
-  OUT UINT32              *Timeout,
-  OUT EFI_PARITY_TYPE     *Parity,
-  OUT UINT8               *DataBits,
-  OUT EFI_STOP_BITS_TYPE  *StopBits
-  )
-{
-  if (BaudRate          != NULL) { *BaudRate          = 115200; }
-  if (ReceiveFifoDepth  != NULL) { *ReceiveFifoDepth  = 32; }
-  if (Timeout           != NULL) { *Timeout           = 1000000; }
-  if (Parity            != NULL) { *Parity            = NoParity; }
-  if (DataBits          != NULL) { *DataBits          = 8; }
-  if (StopBits          != NULL) { *StopBits          = OneStopBit; }
   return RETURN_SUCCESS;
 }
