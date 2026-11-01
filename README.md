@@ -10,10 +10,10 @@ A separate [Nemo UEFI repository](https://github.com/iSciFiLite/rmx2001-nemo-uef
 |---|---:|---:|---:|---|
 | SALAA platform DSC/FDF | Yes | Static metadata only | No | Incomplete |
 | MT6785 SEC entry / assembly | Yes | No EDK II build | No | Initial source |
-| RAM discovery and HOB handoff | Referenced, dependency absent | No | No | Blocked |
+| RAM discovery and HOB handoff | Live DT observed; UEFI map dependency absent | No | No | Blocked |
 | Serial console | Referenced, implementation absent | No | No | Blocked |
 | UEFI GOP / panel | No working driver or handoff | No | No | Unsupported |
-| UFS Block I/O | No MT6785 UFS DXE driver | No | No | Unsupported |
+| UFS Block I/O | Live DT host/PHY nodes observed; no MT6785 UEFI driver | No | No | Unsupported |
 | PSCI / secondary CPUs | Generic EDK components selected | No | No | Unverified |
 | HakiOS boot | No | No | No | **Not compatible yet** |
 | Firmware image | `v0.1.0` release FD restored and provenance-pinned | Original local EDK II build succeeded; no hosted firmware build yet | No | Historical artifact; not device-verified |
@@ -53,10 +53,11 @@ The checked-in SALAA files describe:
 - Realme 7 RMX2151, MT6785, AArch64, build name `SALAA`.
 - Eight CPU cores in two clusters and GICv3 addresses from the referenced F.11 device tree. CPU startup behavior is not demonstrated.
 - A 1080×2400 framebuffer mode. This is only a mode description; no panel initialization or framebuffer reservation is established.
-- Firmware base `0x40000000`, size 4 MiB, and primary stack base `0x40400000`. These are **unverified source assumptions**. Android's kernel load address and the observed DT memory range do not establish a safe UEFI FD/stack/payload reservation.
+- Firmware base `0x40000000`, size 4 MiB, and primary stack base `0x40400000`. These are **unverified source assumptions**. The user-supplied live DT declares RAM at `0x40000000` with size `0x200000000` (8 GiB), while the current system-memory PCD is `0x3e605000`; this mismatch is recorded in the [SALAA evidence report](docs/salaa-device-evidence.md). Neither the Android kernel load address nor the live DT alone establishes the safe UEFI FD/stack/payload map.
+- The live DT declares 26 reserved-memory `reg` ranges and enabled UFS host/PHY nodes at `0x11270000` and `0x11fa0000`. These are hardware descriptions, not proof of available memory or an initialized UFS link. The original DTB is not published because its boot arguments contain a device serial number.
 - `ENABLE_SECUREBOOT = 0` in the EDK II build configuration. This setting alone does not disable Android Verified Boot.
 
-The Realme 7 has board/display/touch variants. The target must be identified from the exact device revision and its bootloader/device-tree handoff before using board-specific addresses. No stock firmware, firmware dump, key, Darwin image, or device data is included here.
+The Realme 7 has board/display/touch variants. The target must be identified from the exact device revision and its bootloader/device-tree handoff before using board-specific addresses. No raw stock firmware, firmware dump, signing key, Darwin image, or raw live DTB is distributed here.
 
 ## What is done and what is not
 
@@ -65,13 +66,14 @@ The Realme 7 has board/display/touch variants. The target must be identified fro
 - Added a SALAA-named EDK II DSC/FDF, MT6785 DSC include, SEC module, entry assembly, and PlatformSecLib source.
 - Recorded MT6785 / SALAA facts and the upstream Mu-Silicium / EDK II starting point.
 - Completed an EDK II `DEBUG_GCC` build in the original Ubuntu workspace and published the output in release `v0.1.0`.
+- Analyzed the supplied F.11 metadata/DTBO set and live DTB; recorded sanitized hardware facts, input hashes, and the unresolved memory-size mismatch in [`docs/salaa-device-evidence.md`](docs/salaa-device-evidence.md).
 - Restored the release FD plus SEC EFI/DLL/map outputs under `artifacts/release-v0.1.0/`, with filenames and hashes that distinguish them from future Actions output.
 - Added a GitHub Actions source/claim audit. It checks repository hygiene, preserves the release FD checksum, and surfaces unresolved source dependencies.
 - Separated Nemo documentation into [its own repository](https://github.com/iSciFiLite/rmx2001-nemo-uefi).
 
 ### Not done
 
-- No clean-checkout EDK II firmware build. The current package references files not tracked here, including `SalaaPkg/Include/DXE.inc`, `SalaaPkg/Include/SalaaMuDefaults.dsc.inc`, `MT6785Pkg/Library/MemoryMapLib`, and `MT6785Pkg/Library/SerialPortLib`. `ShellBootDxe` is also referenced but not supplied by this repository.
+- No clean-checkout EDK II firmware build. The supplied EDK II archive was inspected and is a generic `edk2/` source tree; it does not contain the SALAA Mu-Silicium workspace, original successful build log, or files still needed here: `SalaaPkg/Include/DXE.inc`, `SalaaPkg/Include/SalaaMuDefaults.dsc.inc`, `MT6785Pkg/Library/MemoryMapLib`, `MT6785Pkg/Library/SerialPortLib`, and `MT6785Pkg/Drivers/ShellBootDxe`. The separate SALAA F.11 inputs provide DTB/DTBO/scatter data, not EDK II sources. The supplied `fail.log` records an Android kernel `Image.gz` failure, not the successful EDK II build.
 - No proven SEC input contract, RAM discovery, memory reservations, framebuffer handoff, serial output, or display-panel initialization.
 - No UFS controller/PHY initialization or UEFI Block I/O implementation.
 - No verification of PSCI, CPU start, firmware boot services, shell, storage, or recovery.
@@ -93,7 +95,7 @@ The attached [`salaaPkg-v0.1.0.zip`](https://github.com/iSciFiLite/rmx2151-salaa
 
 | Gate | Work required | State |
 |---|---|---|
-| 1. Source closure | Add or pin every package/include/library/module dependency and preserve upstream licenses | **Open** |
+| 1. Source closure | Add or pin every package/include/library/module dependency and preserve upstream licenses; the supplied archive did not include the missing SALAA workspace files | **Open** |
 | 2. Hosted reproducible build | Build from a clean GitHub Actions runner using pinned dependency revisions; retain logs and temporary artifacts | **Open** |
 | 3. SEC and RAM contract | Establish actual LK entry registers, RAM ranges/reservations, FD load address, stack, and HOB map for each RMX2151 revision | **Open — requires device evidence** |
 | 4. Basic firmware services | Prove serial, boot manager, shell, runtime services, and stable recovery entry | **Open** |
@@ -115,7 +117,7 @@ A green source-audit action closes none of gates 2–9. Those gates remain visib
 
 ## Hosted checks
 
-The [SALAA source audit workflow](https://github.com/iSciFiLite/rmx2151-salaa-uefi/actions/workflows/source-audit.yml) runs on pushes, pull requests, and manual dispatch. It verifies hashes/sizes for all five preserved release outputs, checks the FD's PI firmware-volume signature/length, and reports unresolved source references. It does **not** compile a firmware image, emulate the handset, or verify device behavior. A reproducible hosted EDK II build remains open because the source dependencies listed above are absent from the published checkout.
+The [SALAA source audit workflow](https://github.com/iSciFiLite/rmx2151-salaa-uefi/actions/workflows/source-audit.yml) runs on pushes, pull requests, and manual dispatch. It verifies hashes/sizes for all five preserved release outputs, checks the FD's PI firmware-volume signature/length, and reports unresolved source references. It does **not** compile a firmware image, emulate the handset, or verify device behavior. A reproducible hosted EDK II build remains open because the supplied archive is generic EDK II source and the SALAA dependencies listed above remain absent from the published checkout.
 
 ## Development and safety
 

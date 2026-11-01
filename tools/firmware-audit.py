@@ -4,6 +4,7 @@
 from pathlib import Path
 import hashlib
 import os
+import re
 import subprocess
 
 root = Path(__file__).resolve().parents[1]
@@ -19,6 +20,22 @@ required = [
 for phrase in required:
     if phrase.lower() not in readme.lower():
         raise SystemExit(f"README is missing required status text: {phrase}")
+
+evidence_path = root / "docs/salaa-device-evidence.md"
+if not evidence_path.is_file():
+    raise SystemExit("The sanitized SALAA device-evidence report is missing")
+evidence = evidence_path.read_text()
+for phrase in (
+    "0974ca677db2aaf3010b602d37cc123f33860a1d75e9f1fed735178f72e739ec",
+    "0x200000000",
+    "0x11270000",
+    "0x11fa0000",
+    "does **not** contain the original Mu-Silicium workspace",
+):
+    if phrase.lower() not in evidence.lower():
+        raise SystemExit(f"SALAA evidence report is missing expected input fact: {phrase}")
+if re.search(r"androidboot\.serialno=[^\s\"']+|serialno\s*=\s*\"[^\"]+\"", evidence, re.I):
+    raise SystemExit("A device serial value must not be committed in the evidence report")
 
 for path in [
     "source/Platforms/Realme/SalaaPkg/SalaaPkg.dsc",
@@ -81,6 +98,8 @@ summary = [
     "## SALAA UEFI source audit",
     "",
     "**Result:** repository/status claims, five preserved release-output hashes, and the FD PI-volume signature/length checked. No EDK II build or firmware execution was performed.",
+    "",
+    "Sanitized F.11/live-DT evidence and input hashes checked. The supplied EDK II archive does not close the SALAA source dependencies.",
     "",
     "Known build/compatibility blockers:",
 ]
