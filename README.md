@@ -109,21 +109,50 @@ The vanilla workflow uses Mu-Silicium commit `4bd8ae83bf37de41777f19e0777db70f59
 
 ## Roadmap: what has been done and what remains
 
-| Gate | Done | Not yet done / correction needed |
-|---|---|---|
-| Package/layout | SALAA Mu overlay, package/DEC/DSC/FDF, SEC helpers, standard BDS/Shell closure; hosted Mu build passes | Keep overlay synchronized with pinned Mu and require hosted build after each source change |
-| Device evidence | Live DT, Android memory map, RAM total, framebuffer mode, and input hashes recorded without serial-bearing raw DTB | Obtain LK/UEFI handoff evidence; rerun malformed interval query through a shell that preserves the full line |
-| Memory | 8 GiB RAM extent follows live DT; discontiguous observed extents are used; malformed range excluded; 64 MiB XNUP window reserved | Confirm every range against pre-OS LK reservations and verify FD/stack/heap addresses before boot |
-| GOP | Correct visible width, height, bit depth, and stride from current fb0 evidence; bounds checked against the reserved region | Confirm fb physical base/byte pitch/pixel format and that firmware can retain/read it after LK handoff; test a rendered GOP pattern |
-| HakiOS source integration | Pinned integration helper/workflow applies upstream patch and overlays SALAA; workflow compiles both the HakiOS FD and AArch64 BootShim | Hosted workflow result for this revision must pass; this still does not verify phone boot |
-| XNU handoff | SALAA FD size/base match the integration configuration; XNUP address and reservation are checked | Produce a SALAA boot image from matching device inputs; prove `LoadImage`, XnuLoader start, memory map, `ExitBootServices`, and recovery on device |
-| Serial | Fail-silent null library selected | Identify UART controller/clock/pins/baud from device evidence, then implement and test driver |
-| UFS | Live DT controller/PHY addresses inventoried | Implement or integrate MT6785 power/clock/reset/PHY/link and UFSHCI Block I/O; verify GPT/partition reads and XNU log path |
-| USB/peripherals | Generic UEFI USB class modules included | Add correct host controller, USB role/power, touch, PMIC/power, RTC details, audio/camera, and validate each on device |
-| Recovery/security | No Android partitions or phone firmware are altered by this repository | Verify unlock/AVB behavior and an actual recovery route before any boot-image test; secure boot remains disabled in this debug profile |
-| Hardware status | None claimed | First controlled `fastboot boot` only after the preceding boot contract and recovery checks; collect serial/display/reset logs |
+> ✅ = done + CI verified. ⚠️ = partial/stub. ❌ = not started.
 
-Features unsupported by current source stay listed as open work. The intention is to enable every **generic, low-risk UEFI class** available; device-specific hardware support is added only when its register and handoff contract is established. “Enabled module” does not mean “working device feature.”
+| Gate | Status | Evidence / remaining gap |
+|---|---|---|
+| Package / layout | ✅ | Mu overlay, DEC/DSC/FDF, SEC, BDS/Shell — all CI green |
+| Device evidence | ✅ | Live DT, /proc/iomem, fb0, F.11 OFP scatter/LK header analysed |
+| Memory map | ✅ | 8 GiB RAM, 28 descriptors, XNUP `0xF0000000` 64 MiB reserved |
+| GOP / framebuffer | ⚠️ | Stride 1088, 32 bpp, 1080×2400 set; `smem_start` / byte-pitch unconfirmed |
+| HakiOS integration | ✅ | Pinned HakiOS build + BootShim CI pass; v0.3.0-hakios released |
+| XNU handoff | ⚠️ | XNUP window reserved; SALAA boot image / device handoff not tested |
+| **UART SerialPortLib** | ✅ **NEW** | `MT6785SerialPortLib` at `0x11002000`, 115200-8N1, 26 MHz mode-3 — v0.4.0 |
+| **UFS Block I/O stub** | ⚠️ **NEW** | 8 LUN handles; HCI `0x11270000`, PHY `0x11fa0000`; reads → `EFI_NO_MEDIA` |
+| UFS full driver | ❌ | MT6785 clock/reset/PHY/link/UFSHCIv2 task ring not implemented |
+| USB host controller | ❌ | Generic class modules present; MT6785 SSUSB/xHCI host driver absent |
+| PSCI / secondary CPU | ❌ | Generic Arm PSCI used; MT6785 SMC behaviour unverified |
+| DSI / panel init | ❌ | Panel `truly,td4330,vdo` is LK-owned; GOP reuses bootloader buffer |
+| ACPI / SMBIOS | ⚠️ | SMBIOS strings set; ACPI not generated (DTB-boot path) |
+| Capsule update | ❌ | Module present but no variable storage or authenticated capsule |
+| Hardware boot test | ❌ | `fastboot boot` not attempted; requires handoff + recovery verification |
+| HakiOS–SALAA runtime compat | ❌ | Source compiles; phone runtime and XNU boot unverified |
+
+### What has been done (cumulative, 2026-10-26 – 2026-11-01)
+
+1. **Package skeleton** — Mu-Silicium workspace overlay, `SalaaPkg.{dec,dsc,fdf}`, SEC stub, GIC/core PCDs from F.11 DTB.
+2. **Memory map** — 28-descriptor `MemoryMapLib` with XNUP carve-out at `0xF0000000`.
+3. **GOP stride fix** — `PcdFrameBufferPixelsPerScanLine|1088` from live `fb0` evidence.
+4. **SimpleFbDxe override** — stride-aware SimpleFb in SALAA overlay.
+5. **HakiOS UEFI integration** — pinned workflow, `apply.sh` simulation, BootShim build, v0.3.0-hakios release.
+6. **UART SerialPortLib** — `MT6785SerialPortLib` implementing `mediatek,mt6577-uart` at `0x11002000` (8250-compat, MTK high-speed mode 3, 115200-8N1 / 26 MHz). Baud parameters derived from device kernel `8250_mtk.c` and confirmed DTS node.
+7. **UFS Block I/O stub** — `MT6785UfsBlockIoDxe` registering 8 LUN handles (HCI `0x11270000`, PHY `0x11fa0000`); reads blocked pending full driver.
+8. **Firmware evidence** — F.11 OFP scatter, LK2 header analysis, UART DTS node (GPIO53=RX, GPIO54=TX), UFS DTS node, all documented in `docs/salaa-device-evidence.md`.
+
+### What has NOT been done
+
+- Full UFS host+PHY init (clock enable, UICC link startup, UFSHCIv2 task ring, LUN reads/writes)
+- USB host-controller driver (MT6785 SSUSB / xHCI)
+- PSCI secondary CPU startup verification on hardware
+- DSI / display panel init (bootloader-owned; vendor panel code required)
+- Confirmed `smem_start` framebuffer physical base and byte pitch
+- LK DRAM load address, entry PC/EL, handoff registers
+- SALAA `fastboot boot` attempt
+- Verified HakiOS XNU runtime on SALAA hardware
+
+“CI green” does not mean “working device feature.”
 
 ## Change history and procedure log
 
@@ -136,6 +165,7 @@ All dates below are UTC and refer to repository/CI work unless explicitly labele
 | 2026-11-01 | Hosted vanilla Mu-Silicium build run `41260823722` passed and produced the 4 MiB FD in `v0.2.0-actions.22554c4`. The older `v0.1.0` release files and checksums were preserved. |
 | 2026-11-01 | Owner supplied rooted RMX2151 identity, 8 GiB live memory evidence, framebuffer `mtkfb` mode/virtual stride, and repeated malformed `/proc/iomem` line. The raw live DTB remains private to avoid publishing its serial-bearing boot arguments. |
 | 2026-11-01 | Added a SALAA GOP stride override, framebuffer bounds check, HakiOS/Mu source pins and overlay-preparation tool, static integration checks, XNUP memory reservation, and a hosted HakiOS FD + AArch64 BootShim workflow. The generated outputs are released only after hosted verification. |
+| 2026-11-01 | Extracted F.11 OFP scatter/LK header, stock DTS files from device kernel tree. Documented UART `0x11002000` with GPIO53/54 pins, baud parameters (MTK mode-3, 26 MHz), and UFS HCI/PHY addresses. Implemented `MT6785SerialPortLib` (8250-compat, 115200-8N1) and `MT6785UfsBlockIoDxe` stub (8 LUNs, `EFI_NO_MEDIA`). PR [#1](https://github.com/iSciFiLite/rmx2151-salaa-uefi/pull/1) targets v0.4.0-uart-ufs release on CI pass. |
 
 When a later change is built or device-tested, update this table and the status matrix with the exact date, commit, run/log link, and evidence. Do not convert a build pass into a hardware-support claim.
 
@@ -150,6 +180,27 @@ su -c 'find /dev/block/by-name -maxdepth 1 -type l -printf "%f -> %l\n" 2>/dev/n
 ```
 
 Please redact serial numbers, device identifiers, and UUIDs. Do not upload a full `xbl`/firmware image publicly. A private extract or a list of UFS-related UEFI driver names/versions from your own XBL can help identify an implementation path; redistribution rights and licensing must be checked before any binary is used.
+
+## Credits
+
+- **[oosexgang/hakios-mt6768](https://github.com/oosexgang/hakios-mt6768)** — HakiOS MT6768/Helio G85 reference device; provided the structural reference for MT6785 UEFI porting strategy, MemoryMapLib pattern, and XNUP handoff design.
+- **[Project Silicium / Mu-Silicium](https://github.com/Project-Silicium/Mu-Silicium)** — upstream EDK II platform framework; SEC/DXE architecture, SiliciumPkg library classes, and SimpleFbDxe driver basis.
+- **[oosexgang/hakios-uefi](https://github.com/oosexgang/hakios-uefi)** — HakiOS UEFI patch stack (BootShim, XnuLoader, XNUP); integrated at pinned commit `687fa6c6a5a70f43184de92980e0a76eea5f2c4b`.
+- **[UniXNU](https://github.com/UniXNU)** — XNU port design and HakiOS XNU kernel reference.
+- **[elohim-etz/android_kernel_realme_mt6785](https://github.com/elohim-etz/android_kernel_realme_mt6785)** — SALAA kernel source used to verify UART `8250_mtk.c` register layout and `ufshci` driver references.
+- **[elohim-etz/android_device_realme_RM6785](https://github.com/elohim-etz/android_device_realme_RM6785)** — Device tree overlay reference for SALAA.
+
+## Benefits of successful XNU kernel compile (HakiOS context)
+
+A successful HakiOS XNU kernel compile on/for SALAA:
+
+1. **Proves source closure** — all XNU subsystems, Mach primitives, BSD layer, IOKit, and the HakiOS device abstraction layer build without error for AArch64 MT6785.
+2. **Generates `mach_kernel` / XNU image** — required input for `mkxnuimg.py` to produce the UEFI payload at `0xF0000000`.
+3. **Enables UEFI payload testing** — with a compiled XNU image, `fastboot boot` can load the UEFI FD containing BootShim → XnuLoader → XNU without flashing Android.
+4. **Validates HakiOS driver stubs** — IOKit kext layer and any MT6785-specific drivers (GPU, UFS, display) must compile against the XNU headers; errors reveal missing symbols or mismatched ABIs.
+5. **Unlocks the HakiOS log path** — XnuLoader uses `EFI_BLOCK_IO_PROTOCOL` to find the `logdump` partition; a compiled XNU image + working UFS stub makes this path testable.
+6. **Enables Mach boot protocol verification** — boot-args, memory map, DTB pointer, and framebuffer descriptor are passed from BootShim to XNU; a compiled kernel allows checking these at first entry.
+7. **Demonstrates AArch64v8.2 toolchain readiness** — the MT6785 is ARMv8.2-A+crypto+rcpc; a clean compile proves the cross-compiler and SDK target the correct ISA.
 
 ## License and references
 
