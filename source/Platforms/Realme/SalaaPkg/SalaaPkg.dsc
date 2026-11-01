@@ -11,7 +11,7 @@
   SUPPORTED_ARCHITECTURES        = AARCH64
   BUILD_TARGETS                  = RELEASE|DEBUG
   SKUID_IDENTIFIER               = DEFAULT
-  FLASH_DEFINITION               = SalaaPkg/SalaaPkg.fdf
+  FLASH_DEFINITION               = Platforms/Realme/SalaaPkg/SalaaPkg.fdf
   # DEVIATION: unsigned UEFI Shell bring-up image; Android AVB remains a separate boot chain.
   DEFINE ENABLE_SECUREBOOT       = 0
   USE_CUSTOM_DISPLAY_DRIVER      = 0

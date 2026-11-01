@@ -144,8 +144,10 @@ To make a clean hosted compile possible, this repository now includes:
 
 The first hosted build reached Mu setup and failed in the pre-build debug
 macro plugin before any C compilation because the platform directory lacked a
-DEC package descriptor. `SalaaPkg.dec` has now been added; the next hosted
-run must confirm package discovery and reveal any further EDK II errors. A
-successful compile will only prove source/toolchain integration. It will not
-verify SEC entry, memory reservations, GOP, UFS, PSCI, recovery, or booting an
-OS.
+DEC package descriptor. After adding `SalaaPkg.dec`, the second run advanced
+past that check but failed because Mu's EDK path resolver could not resolve
+package-alias paths for SALAA library INFs. The DSC/FDF and local INF
+references now use explicit workspace-relative paths. CI must confirm this
+correction; no C compilation has yet completed. A successful compile will
+only prove source/toolchain integration. It will not verify SEC entry, memory
+reservations, GOP, UFS, PSCI, recovery, or booting an OS.

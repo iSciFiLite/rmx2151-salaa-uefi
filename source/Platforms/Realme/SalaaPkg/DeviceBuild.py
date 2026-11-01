@@ -69,7 +69,10 @@ class SettingsManager(
         return CommonPlatform.Scopes
 
     def GetPlatformDscAndConfig(self):
-        return ("SalaaPkg/SalaaPkg.dsc", {})
+        # Use workspace-relative paths here.  Mu's OverrideValidation plugin
+        # resolves DSC library INF paths through Edk2Path; it does not resolve
+        # this package alias consistently when the package is overlayed by CI.
+        return ("Platforms/Realme/SalaaPkg/SalaaPkg.dsc", {})
 
     def GetName(self):
         return "Salaa"
@@ -97,7 +100,9 @@ class PlatformBuilder(UefiBuilder, BuildSettingsManager):
 
     def SetPlatformEnv(self):
         self.env.SetValue("PRODUCT_NAME", "SALAA", "Platform")
-        self.env.SetValue("ACTIVE_PLATFORM", "SalaaPkg/SalaaPkg.dsc", "Platform")
+        self.env.SetValue(
+            "ACTIVE_PLATFORM", "Platforms/Realme/SalaaPkg/SalaaPkg.dsc", "Platform"
+        )
         self.env.SetValue("TARGET_ARCH", "AARCH64", "Platform")
         self.env.SetValue("TOOL_CHAIN_TAG", "CLANGPDB", "Mu-Silicium")
         self.env.SetValue("EMPTY_DRIVE", "FALSE", "Platform")

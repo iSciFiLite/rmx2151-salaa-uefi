@@ -32,8 +32,8 @@
   gSiliciumPkgTokenSpaceGuid.PcdSmbiosProcessorPartNumber|"MT6785"
 
 [LibraryClasses]
-  PlatformSecLib|SalaaPkg/Library/PlatformSecLib/PlatformSecLib.inf
-  MemoryMapLib|SalaaPkg/Library/MemoryMapLib/MemoryMapLib.inf
+  PlatformSecLib|Platforms/Realme/SalaaPkg/Library/PlatformSecLib/PlatformSecLib.inf
+  MemoryMapLib|Platforms/Realme/SalaaPkg/Library/MemoryMapLib/MemoryMapLib.inf
   # No UART driver is enabled until the RMX2151 UART clock/pin and handoff
   # have been verified. Keep debug output fail-silent rather than MMIO-guess.
   SerialPortLib|MdePkg/Library/BaseSerialPortLibNull/BaseSerialPortLibNull.inf

@@ -38,7 +38,7 @@ READ_STATUS        = TRUE
 READ_LOCK_CAP      = TRUE
 READ_LOCK_STATUS   = TRUE
 
-  !include SalaaPkg/Include/DXE.inc
+  !include Platforms/Realme/SalaaPkg/Include/DXE.inc
 
 [FV.FVMAIN_COMPACT]
 BlockSize          = 0x1000
