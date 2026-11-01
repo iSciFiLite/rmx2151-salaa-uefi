@@ -86,6 +86,10 @@
   SiliciumPkg/Drivers/SimpleFbDxe/SimpleFbDxe.inf
   ArmPkg/Drivers/ArmGicDxe/ArmGicDxe.inf
   ArmPkg/Drivers/TimerDxe/TimerDxe.inf
+  # MT6785 UFS Block I/O stub: publishes EFI_BLOCK_IO_PROTOCOL for 8 LUNs
+  # at UFS HCI 0x11270000 / M-PHY 0x11fa0000 (DT-confirmed).
+  # ReadBlocks returns EFI_NO_MEDIA until a full host driver is added.
+  Silicon/MediaTek/MT6785Pkg/Drivers/UfsBlockIoDxe/UfsBlockIoDxe.inf
   MdeModulePkg/Universal/BdsDxe/BdsDxe.inf
   ShellPkg/Application/Shell/Shell.inf
 

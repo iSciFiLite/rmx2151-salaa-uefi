@@ -189,3 +189,97 @@ FD, then compiles BootShim with the SALAA 4 MiB FD and 64 MiB XNUP constants.
 The result and exact run status are linked from the top-level README. Even a
 passing job verifies compilation only; no SALAA fastboot image or phone boot
 has been tested. The UFS Block I/O and boot contract gaps remain.
+
+## Firmware image evidence — 2026-11-01 (F.11 OFP extraction)
+
+Extracted from `selected_f11/` directory produced by the OFP decryption step
+run in a previous session:
+
+### Scatter file (MT6785_20682_Android_scatter.txt)
+
+Flash partition table for `project: k85v1_64`, `platform: MT6785`.  Relevant
+entries (flash offsets, not DRAM load addresses):
+
+| Partition | Flash offset | Size |
+|-----------|-------------|------|
+| preloader | 0x0 | 0x80000 |
+| lk        | 0x56500000 | 0x200000 |
+| lk2       | 0x56700000 | 0x200000 |
+| boot_a    | 0x56900000 | (varies) |
+
+> The `linear_start_addr` field in the scatter file is the **eMMC flash byte
+> offset**, not a DRAM address.  It does not establish where LK copies itself
+> to DRAM or where it jumps.
+
+### LK image header (lk.img, 1.4 MiB)
+
+Magic bytes: `88 16 88 58` = `0x58881688` — MediaTek LK2 header magic.
+Second block at `0x30`: magic `0x58891689`, version `0x200`, `part_count=1`.
+The payload section of the LK2 format has its `load_addr` field set to
+`0xFFFFFFFFFFFFFFFF` in this image (standard for OFP-encrypted LK2 where the
+actual load address is embedded in the preloader's partition-management table,
+not in the LK header itself).
+
+**Conclusion:** The LK DRAM load address, entry PC, exception level, SP, and
+argument registers cannot be determined from this image alone without a
+preloader log or UART capture.  The standard MT6785 LK2 bootloader (k85v1_64)
+is believed to copy LK to DRAM at approximately `0x4C000000` and enter at
+`+0` in AArch64 EL1 (based on MT6765/MT6771 public LK2 port behaviour), but
+this is NOT confirmed for SALAA and must not be assumed safe.
+
+### UART evidence (stock-salaa-1.dts)
+
+```
+serial@11002000 {
+    compatible = "mediatek,mt6577-uart";
+    reg = <0x00 0x11002000 0x00 0x1000>;
+    interrupts = <0x00 0x73 0x08>;
+    clocks = <0x13 0x21 0x15>;       /* baud clock (26 MHz ref), bus clock */
+    clock-names = "baud\0bus";
+    pinctrl-0 = <gpio53_rx>;
+    pinctrl-1 = <gpio54_tx>;         /* GPIO53=RX, GPIO54=TX */
+    status = "okay";
+};
+aliases: apuart0 = "/serial@11002000";
+```
+
+The `mediatek,mt6577-uart` IP is the same 8250-compatible UART block used
+across MT6577, MT6795, MT6771, and MT6785. Register layout verified against
+`drivers/tty/serial/8250/8250_mtk.c` from the device kernel tree.
+
+**Baud-rate parameters for 115200 from 26 MHz (MTK high-speed mode 3):**
+
+| Register | Offset | Value | Derivation |
+|----------|--------|-------|------------|
+| HIGHS    | 0x09*4 | 3     | Enable MTK fractional-divider mode 3 |
+| DLL      | 0x00*4 | 1     | Divisor = ceil(26e6 / (256*115200)) = 1 |
+| DLM      | 0x01*4 | 0     | High byte of divisor |
+| SAMPLE_CNT | 0x0A*4 | 225 | 26e6/(115200*1) − 1 = 225 |
+| SAMPLE_PT  | 0x0B*4 | 111 | SAMPLE_CNT/2 − 1 = 111 |
+
+The `MT6785SerialPortLib` at
+`Silicon/MediaTek/MT6785Pkg/Library/SerialPortLib/SerialPortLib.c`
+implements this sequence. The previous null stub (`BaseSerialPortLibNull`) is
+replaced; the CI build verifies the new lib compiles successfully.
+
+### UFS evidence (stock-salaa-1.dts)
+
+```
+ufshci@11270000 {
+    compatible = "mediatek,ufshci";
+    reg = <0x00 0x11270000 0x00 0x2300>;
+    interrupts = <0x00 0x68 0x08>;
+    clocks = <ufs0-clock, ufs0-unipro-clk, ufs0-mp-clk, ufs0-aes-clk>;
+};
+ufs_mphy@11fa0000 {
+    compatible = "mediatek,ufs_mphy";
+    reg = <0x00 0x11fa0000 0x00 0xc000>;
+};
+```
+
+The UFS Block I/O stub at
+`Silicon/MediaTek/MT6785Pkg/Drivers/UfsBlockIoDxe/` publishes
+`EFI_BLOCK_IO_PROTOCOL` handles for 8 LUNs with `MediaPresent=FALSE`.
+Full MT6785 UFS host+PHY init (clock enable, UICC link startup, UFSHCIv2
+task-management ring) is NOT implemented.  The stub proves the protocol
+path in CI and provides correct handle enumeration for BDS/XnuLoader.

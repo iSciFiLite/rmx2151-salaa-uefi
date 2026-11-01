@@ -1,0 +1,38 @@
+## @file
+#  MT6785 UFS Block I/O DXE stub — SALAA / RMX2151.
+#
+#  Publishes EFI_BLOCK_IO_PROTOCOL handles for up to 8 UFS LUNs backed by
+#  the MT6785 UFS host controller (0x11270000) and M-PHY (0x11fa0000).
+#  Block reads/writes return EFI_NO_MEDIA until a full MT6785 UFS host
+#  driver is added (the stub proves the protocol path in CI builds).
+#
+#  Copyright (c) 2024, SALAA UEFI Contributors. All rights reserved.
+#  SPDX-License-Identifier: BSD-2-Clause-Patent
+##
+
+[Defines]
+  INF_VERSION                    = 0x0001001B
+  BASE_NAME                      = MT6785UfsBlockIoDxe
+  FILE_GUID                      = 6D6E1A20-2151-4678-8567-678500000020
+  MODULE_TYPE                    = DXE_DRIVER
+  VERSION_STRING                 = 1.0
+  ENTRY_POINT                    = UfsBlockIoDxeInitialise
+
+[Sources]
+  UfsBlockIoDxe.c
+
+[Packages]
+  MdePkg/MdePkg.dec
+
+[LibraryClasses]
+  UefiDriverEntryPoint
+  UefiBootServicesTableLib
+  DebugLib
+  BaseMemoryLib
+  MemoryAllocationLib
+
+[Protocols]
+  gEfiBlockIoProtocolGuid                 ## PRODUCES
+
+[Depex]
+  TRUE

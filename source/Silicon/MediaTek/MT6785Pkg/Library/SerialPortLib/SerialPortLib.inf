@@ -1,0 +1,33 @@
+## @file
+#  MT6785 UART0 SerialPortLib — MMIO implementation for SALAA (RMX2151).
+#
+#  Implements the EDK II SerialPortLib class against the MediaTek MT6785
+#  UART0 block at physical address 0x11002000 (compatible: mediatek,mt6577-uart).
+#  Operates at 115200-8N1 using the SoC 26 MHz reference clock and the
+#  MTK high-speed mode-3 fractional divider path.
+#
+#  This library is selected for SALAA builds via MT6785Pkg.dsc.inc.
+#  It must NOT be used for any other MediaTek SoC without verifying the
+#  register layout, clock tree, and baud-rate parameters.
+#
+#  Copyright (c) 2024, SALAA UEFI Contributors. All rights reserved.
+#  SPDX-License-Identifier: BSD-2-Clause-Patent
+##
+
+[Defines]
+  INF_VERSION                    = 0x0001001B
+  BASE_NAME                      = MT6785SerialPortLib
+  FILE_GUID                      = 6D6E1A20-2151-4678-8567-678500000010
+  MODULE_TYPE                    = BASE
+  VERSION_STRING                 = 1.0
+  LIBRARY_CLASS                  = SerialPortLib
+
+[Sources]
+  SerialPortLib.c
+
+[Packages]
+  MdePkg/MdePkg.dec
+
+[LibraryClasses]
+  IoLib
+  BaseLib

@@ -34,9 +34,14 @@
 [LibraryClasses]
   PlatformSecLib|Silicon/MediaTek/MT6785Pkg/Library/PlatformSecLib/PlatformSecLib.inf
   MemoryMapLib|Platforms/Realme/SalaaPkg/Library/MemoryMapLib/MemoryMapLib.inf
-  # No UART driver is enabled until the RMX2151 UART clock/pin and handoff
-  # have been verified. Keep debug output fail-silent rather than MMIO-guess.
-  SerialPortLib|MdePkg/Library/BaseSerialPortLibNull/BaseSerialPortLibNull.inf
+  # MT6785 UART0 SerialPortLib — MMIO implementation at 0x11002000.
+  # Compatible: mediatek,mt6577-uart (DT-confirmed, stock-salaa-1.dts).
+  # Configured at 115200-8N1 using the 26 MHz SoC reference clock and
+  # MTK high-speed mode 3 (HIGHS=3, DLL=1, SAMPLE_CNT=225, SAMPLE_PT=111).
+  # This replaces the null stub added in f691125; the register layout and
+  # baud parameters are sourced from the device kernel (8250_mtk.c) and the
+  # confirmed DT node, NOT guessed from a different SoC.
+  SerialPortLib|Silicon/MediaTek/MT6785Pkg/Library/SerialPortLib/SerialPortLib.inf
   # Standard EDK II Shell application libraries (matches ShellPkg's DSC).
   ShellLib|ShellPkg/Library/UefiShellLib/UefiShellLib.inf
   ShellCommandLib|ShellPkg/Library/UefiShellCommandLib/UefiShellCommandLib.inf

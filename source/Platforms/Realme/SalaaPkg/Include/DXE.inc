@@ -33,5 +33,6 @@ INF MdeModulePkg/Bus/Usb/UsbMassStorageDxe/UsbMassStorageDxe.inf
 INF ArmPkg/Drivers/ArmGicDxe/ArmGicDxe.inf
 INF ArmPkg/Drivers/TimerDxe/TimerDxe.inf
 INF SiliciumPkg/Drivers/SimpleFbDxe/SimpleFbDxe.inf
+INF Silicon/MediaTek/MT6785Pkg/Drivers/UfsBlockIoDxe/UfsBlockIoDxe.inf
 INF MdeModulePkg/Universal/BdsDxe/BdsDxe.inf
 INF ShellPkg/Application/Shell/Shell.inf
