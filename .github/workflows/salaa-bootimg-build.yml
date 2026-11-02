@@ -1,0 +1,106 @@
+name: SALAA one-shot UEFI boot image
+
+on:
+  workflow_dispatch:
+    inputs:
+      stock_boot_url:
+        description: Temporary direct HTTPS URL to the verified 32 MiB F.11 boot.img
+        required: true
+        type: string
+
+permissions:
+  contents: write
+
+jobs:
+  pack:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    steps:
+      - name: Checkout SALAA packer
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.x'
+
+      - name: Download the owner-supplied F.11 boot image
+        env:
+          STOCK_BOOT_URL: ${{ inputs.stock_boot_url }}
+        run: |
+          set -euo pipefail
+          mkdir -p input output
+          curl --fail --location --retry 3 --max-filesize 33554432 \
+            "$STOCK_BOOT_URL" --output input/stock-boot.img
+          test "$(stat -c %s input/stock-boot.img)" = 33554432
+          echo '27227c7345e412998ec7394dd37646adc5da8614f71d5653f747840fcdcc57c5  input/stock-boot.img' | sha256sum -c -
+
+      - name: Fetch pinned Android boot-image tools
+        run: |
+          set -euo pipefail
+          curl --fail --location \
+            'https://android.googlesource.com/platform/system/tools/mkbootimg/+/d2bb0af5ba6d3198a3e99529c97eda1be0b5a093/unpack_bootimg.py?format=TEXT' \
+            | base64 -d > input/unpack_bootimg.py
+          echo 'a9d260978a63bd06a24b6347e7dee8a28ff96639793caea15dff6aa491316308  input/unpack_bootimg.py' | sha256sum -c -
+          curl --fail --location \
+            'https://raw.githubusercontent.com/Project-Silicium/Mu-Silicium/4bd8ae83bf37de41777f19e0777db70f59383a6d/Resources/Scripts/mkbootimg.py' \
+            --output input/mkbootimg.py
+          echo '55037fd1a6d6cd861add76c2083d5d4321373bf714acae3f6a40deb004c27d47  input/mkbootimg.py' | sha256sum -c -
+
+      - name: Download verified vanilla FD and SALAA BootShim
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          gh release download v0.6.1-vanilla.fd5785f \
+            --repo "$GITHUB_REPOSITORY" \
+            --pattern SALAA_EFI.v0.6.1.vanilla.fd --dir input
+          gh release download v0.3.0-hakios.8e6cf0d \
+            --repo "$GITHUB_REPOSITORY" \
+            --pattern SALAA_BootShim.hakios-8e6cf0d626927d9456f81be257bc2c1db92afea8.bin --dir input
+
+      - name: Pack and verify SALAA Android boot image
+        run: |
+          set -euo pipefail
+          python3 tools/pack-salaa-bootimg.py \
+            --stock-boot input/stock-boot.img \
+            --fd input/SALAA_EFI.v0.6.1.vanilla.fd \
+            --shim input/SALAA_BootShim.hakios-8e6cf0d626927d9456f81be257bc2c1db92afea8.bin \
+            --unpack-bootimg input/unpack_bootimg.py \
+            --mkbootimg input/mkbootimg.py \
+            --out-dir output \
+            --source-commit "$GITHUB_SHA" \
+            --fd-release v0.6.1-vanilla.fd5785f
+          (cd output && sha256sum -c SHA256SUMS)
+
+      - name: Upload verified SALAA boot image artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: SALAA-UEFI-BOOT-${{ github.sha }}
+          path: output/*
+          if-no-files-found: error
+          retention-days: 30
+
+      - name: Publish SALAA one-shot boot image prerelease
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          tag="v0.7.0-bootimg.${GITHUB_RUN_ID}"
+          cat > output/release-notes.md <<EOF
+          Experimental one-shot SALAA UEFI boot image assembled and verified by GitHub Actions.
+
+          This Android boot image contains the SALAA BootShim, vanilla 4 MiB FD, and F.11 ramdisk/DTB. It is not hardware-tested. Use fastboot boot SALAA_UEFI_BOOT.img only; do not flash this image or either LK partition.
+
+          Source: ${GITHUB_SHA}
+          EOF
+          gh release create "$tag" \
+            --repo "$GITHUB_REPOSITORY" \
+            --title "SALAA one-shot UEFI boot image run ${GITHUB_RUN_ID}" \
+            --notes-file output/release-notes.md \
+            --prerelease \
+            --target "$GITHUB_SHA" \
+            output/SALAA_UEFI_BOOT.img \
+            output/SHA256SUMS \
+            output/verification.json \
+            output/PROVENANCE.md

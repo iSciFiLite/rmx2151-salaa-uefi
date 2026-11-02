@@ -63,6 +63,8 @@ required_files = (
     "tools/verify-hakios-integration.py",
     "integrations/hakios/lock.env",
     ".github/workflows/hakios-uefi-build.yml",
+    ".github/workflows/salaa-bootimg-build.yml",
+    "tools/pack-salaa-bootimg.py",
 )
 for relative in required_files:
     if not (ROOT / relative).is_file():
@@ -83,6 +85,16 @@ for pin in (
         raise SystemExit(f"The hosted HakiOS build is missing reviewed source pin: {pin}")
 if "make -C mu/BootShim" not in hakios_workflow:
     raise SystemExit("The hosted HakiOS workflow does not build the SALAA BootShim")
+
+bootimg_workflow = (ROOT / ".github/workflows/salaa-bootimg-build.yml").read_text()
+for marker in (
+    "27227c7345e412998ec7394dd37646adc5da8614f71d5653f747840fcdcc57c5",
+    "v0.6.1-vanilla.fd5785f",
+    "v0.3.0-hakios.8e6cf0d",
+    "fastboot boot SALAA_UEFI_BOOT.img",
+):
+    if marker not in bootimg_workflow:
+        raise SystemExit(f"The SALAA boot-image workflow is missing verified setting: {marker}")
 
 memory_audit = subprocess.run(
     ["python3", str(ROOT / "tools/audit-memory-map.py")],

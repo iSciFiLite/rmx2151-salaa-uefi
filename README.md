@@ -11,8 +11,8 @@
 | SALAA platform | AArch64 SEC/DXE, board package, memory descriptors, SimpleFb GOP, standard EDK II BDS/Shell | The vanilla Mu-Silicium source compiled on hosted Actions; not hardware-tested on phone. |
 | Mu-Silicium | Pinned workspace overlays and reproducible package configuration | Vanilla pin `4bd8ae83bf37de41777f19e0777db70f59383a6d` passed hosted build run [41260823722](https://github.com/iSciFiLite/rmx2151-salaa-uefi/actions/runs/41260823722). HakiOS uses its own base pin, below. |
 | HakiOS UEFI | Upstream BootShim/XNUP and BootManager/XnuLoader patch stack; SALAA overlay; separate hosted build and BootShim job | Build result is recorded in the latest [HakiOS integration Actions run](https://github.com/iSciFiLite/rmx2151-salaa-uefi/actions/workflows/hakios-uefi-build.yml). A successful compile is source integration only. It does not make the phone runtime-compatible. |
-| HakiOS/XNU fastboot handoff | FD layout matches the SALAA profile; XNUP window is reserved; workflow builds the AArch64 shim | Still needs a valid SALAA Android boot image/DTB/ramdisk, confirmed LK handoff, and hardware logs. The upstream XNU guide describes the payload at `0xF0000000` and a 64 MiB region; it does not document a SALAA test. |
-| Android boot image to enter UEFI | **Not produced yet.** The released `.fd` and BootShim are components, not an Android `boot.img`. | Found the matching F.11 `boot.img` in the local selective OFP extraction; its SHA-256 matches the manifest and AOSP unpacker confirms header v2 and load addresses. The stock image is not in GitHub or accessible to Actions yet. First attempt should use one-shot `fastboot boot`; no partition flash is advised. |
+| HakiOS/XNU fastboot handoff | FD layout matches the SALAA profile; XNUP window is reserved; workflow builds the AArch64 shim | The F.11 boot image/DTB/ramdisk are verified, but a SALAA Android boot image is not yet assembled. LK handoff and phone logs remain unverified. HakiOS uses the `0xF0000000` 64 MiB payload window; this profile has not been phone-tested. |
+| Android boot image to enter UEFI | **Not produced yet.** The released `.fd` and BootShim are components, not an Android `boot.img`. | Found the matching F.11 `boot.img` in the local selective OFP extraction; its SHA-256 matches the manifest and AOSP unpacker confirms header v2 and load addresses. The stock image is not in GitHub or accessible to Actions yet; the packer workflow is ready but awaits its direct HTTPS URL. First attempt should use one-shot `fastboot boot`; no partition flash is advised. |
 | GOP/framebuffer | Uses live-DT display reservation and reports 1080×2400, 32 bpp, **1088 pixels per scan line** | Rooted `fb0` output reports `mtkfb`, 32 bpp, virtual size `1088,9600`, and mode `U:1080x2400p-0`. Base address, actual byte pitch, pixel channel order, and lifetime across UEFI handoff still need confirmation. The DSI/panel is not initialized by this GOP driver. |
 | Internal UFS | Register sample at `0x11270000`; optional eight Block I/O placeholders report no media | Probe only. HCS bit 0 is UCRDY, not device presence. No UFS command queue, PHY/link, clock setup, LUN capacity discovery, or storage reads; `ReadBlocks` returns `EFI_NO_MEDIA`. |
 | UART/serial | MT6785 SerialPortLib configures `0x11002000`, MTK mode 3, 115200-8N1 from an assumed 26 MHz clock | Hosted compilation only. UART output, pinmux, clock state, and boot handoff are not hardware-verified. |
@@ -102,7 +102,18 @@ make -C BootShim REQUIRES_KERNEL_HEADER=1 FD_BASE=0x40000000 \
   'CFLAGS=--target=aarch64-linux-gnu -DPAYLOAD_BASE=0xF0000000'
 ```
 
-The build output is under `mu/Build/SALAA/`; locate `SALAA_EFI.fd` there. Run `python3 salaa-uefi/tools/verify-uefi-fd.py <path-to-SALAA_EFI.fd>` and `python3 salaa-uefi/tools/verify-hakios-integration.py mu`. The last command audits source hooks and handoff constants. A SALAA boot image is a separate Android `boot.img`, not the `.fd`. The matching F.11 stock image was found and its v2 header, ramdisk, and DTB were parsed, but the local binary is not available to GitHub Actions yet. HakiOS's `mkxnuimg.py` is Redwood-specific (2 MiB FD, `0x9FD00000`, header v1) and must not be reused unchanged. No SALAA boot image has been emitted. The intended first trial is `fastboot boot SALAA_UEFI_BOOT.img`, which boots from RAM; do not flash it to `boot` before the image is rebuilt, the bootloader handoff is confirmed, and recovery is available.
+The build output is under `mu/Build/SALAA/`; locate `SALAA_EFI.fd` there. Run `python3 salaa-uefi/tools/verify-uefi-fd.py <path-to-SALAA_EFI.fd>` and `python3 salaa-uefi/tools/verify-hakios-integration.py mu`. The last command audits source hooks and handoff constants. HakiOS's upstream `mkxnuimg.py` is Redwood-specific (2 MiB FD, `0x9FD00000`, header v1) and must not be reused unchanged. The SALAA packer is documented below; it requires a direct HTTPS URL to the verified F.11 boot image. No SALAA boot image has been emitted yet. The first trial is `fastboot boot SALAA_UEFI_BOOT.img`; do not flash it to `boot` or modify either LK partition.
+
+### Build a one-shot SALAA Android boot image
+
+The **SALAA one-shot UEFI boot image** GitHub Actions workflow creates the Android v2 `boot.img` that starts UEFI. It preserves the F.11 boot header, ramdisk, and DTB, replaces the Linux kernel with `gzip(BootShim + vanilla SALAA FD)`, then verifies the header, addresses, embedded bytes, ramdisk, DTB, and 32 MiB size limit.
+
+1. Make the verified 32 MiB F.11 `boot.img` available at a temporary direct HTTPS download URL. Its expected SHA-256 is `27227c7345e412998ec7394dd37646adc5da8614f71d5653f747840fcdcc57c5`. Do not upload the 10.5 GB OFP.
+2. In **Actions → SALAA one-shot UEFI boot image**, select **Run workflow** on `main` and enter that URL.
+3. Download the image and verification/provenance files from the run artifact or its prerelease. Verify them with `sha256sum -c SHA256SUMS`.
+4. With an unlocked bootloader, the first trial is `fastboot boot SALAA_UEFI_BOOT.img`. This is a temporary RAM boot. Do not use `fastboot flash boot` or flash LK/LK2. No phone boot test has been done; recovery and bootloader acceptance must be confirmed by the owner in person.
+
+The stock input remains outside Git. The workflow pins and hash-checks both image tools and verifies the input boot hash. The generated image includes the stock F.11 ramdisk and DTB; provenance records its source and clearly marks phone boot untested.
 
 ### Vanilla Mu-Silicium build
 
@@ -115,10 +126,11 @@ The vanilla workflow uses Mu-Silicium commit `4bd8ae83bf37de41777f19e0777db70f59
 | Gate | Status | Evidence / remaining gap |
 |---|---|---|
 | Package / layout | ✅ | Mu overlay, DEC/DSC/FDF, SEC, BDS/Shell — all CI green (Actions: 41304338725) |
-| Device evidence | ✅ | Live DT, /proc/iomem, fb0, F.11 OFP scatter/LK header, atag,videolfb analysed |
+| Device evidence | ✅ | Live DT, /proc/iomem, fb0, F.11 scatter, boot.img v2 header/ramdisk/DTB, LK/LK2 hashes, atag,videolfb analyzed |
 | Memory map | ✅ | 8 GiB RAM, 28 descriptors, XNUP `0xF0000000` 64 MiB reserved |
 | GOP / framebuffer | ✅ | Base `0x75D30000`, size `0x02CD0000`, Stride 1088, 32 bpp, 1080×2400, Tianma NT36672C (atag,videolfb confirmed) |
 | HakiOS integration | ✅ | Pinned HakiOS build + BootShim CI pass; release published (Actions: 41304338689) |
+| SALAA Android boot image | ⚠️ | Pinned packer and hosted workflow added; awaits a temporary URL to the verified F.11 boot.img. No boot.img has been produced. |
 | XNU handoff | ⚠️ | XNUP window reserved (0xF0000000); BootShim configured; phone runtime fastboot handoff unverified on hardware |
 | **UART SerialPortLib** | ⚠️ | EDK II source compiles; `0x11002000`, 115200-8N1 / assumed 26 MHz; physical output not captured |
 | **UFS Block I/O** | ⚠️ | Register probe and no-media placeholders compile; no UFS command/link driver or usable media |
@@ -138,7 +150,9 @@ The vanilla workflow uses Mu-Silicium commit `4bd8ae83bf37de41777f19e0777db70f59
 5. **HakiOS UEFI integration** — pinned workflow, `apply.sh` simulation, BootShim build, v0.3.0-hakios release.
 6. **UART SerialPortLib** — `MT6785SerialPortLib` implementing `mediatek,mt6577-uart` at `0x11002000` (8250-compat, MTK high-speed mode 3, 115200-8N1 / 26 MHz). Baud parameters derived from device kernel `8250_mtk.c` and confirmed DTS node.
 7. **UFS Block I/O stub** — `MT6785UfsBlockIoDxe` samples controller registers and registers no-media placeholders; no LUN discovery or data transfers.
-8. **Firmware evidence** — F.11 OFP scatter, LK2 header analysis, UART DTS node (GPIO53=RX, GPIO54=TX), UFS DTS node, all documented in `docs/salaa-device-evidence.md`.
+8. **Firmware evidence** — F.11 OFP scatter, boot.img v2 and boot-chain files, UART DTS node (GPIO53=RX, GPIO54=TX), UFS DTS node, all documented in `docs/salaa-device-evidence.md`.
+9. **Hosted vanilla release** — current 4 MiB SALAA FD built and released as `v0.6.1-vanilla.fd5785f`; checksum and provenance were validated in Actions.
+10. **One-shot boot-image packer** — SALAA v2 packer and Actions workflow added with pinned tools and hash checks. It has not run because Actions cannot read the local F.11 image.
 
 ### What has NOT been done
 
@@ -148,7 +162,8 @@ The vanilla workflow uses Mu-Silicium commit `4bd8ae83bf37de41777f19e0777db70f59
 - DSI / display panel init (bootloader-owned; vendor panel code required)
 - Confirmed `smem_start` framebuffer physical base and byte pitch
 - LK DRAM load address, entry PC/EL, handoff registers
-- SALAA `fastboot boot` attempt
+- SALAA `boot.img` packaging run (awaiting a temporary HTTPS URL to the stock F.11 `boot.img`; the full OFP is not required)
+- SALAA `fastboot boot` attempt and recovery verification on the actual phone
 - Verified HakiOS XNU runtime on SALAA hardware
 
 “CI green” does not mean “working device feature.”
@@ -167,12 +182,12 @@ All dates below are UTC and refer to repository/CI work unless explicitly labele
 | 2026-11-01 | Extracted F.11 OFP scatter/LK header, stock DTS files from device kernel tree. Documented UART `0x11002000` with GPIO53/54 pins, baud parameters (MTK mode-3, 26 MHz), and UFS HCI/PHY addresses. Implemented `MT6785SerialPortLib` (8250-compat, 115200-8N1) and `MT6785UfsBlockIoDxe` stub. |
 | 2026-11-01 | Fixed EDK II SerialPortLib prototypes (SerialPortSetControl/GetControl/SetAttributes) in commit `b7c6ea9`. Enabled development branch push triggers in workflow configurations (`e8c47d9`). Verified complete dual-build pass on GitHub Actions: vanilla Mu build [41304338725](https://github.com/iSciFiLite/rmx2151-salaa-uefi/actions/runs/41304338725) and HakiOS integration [41304338689](https://github.com/iSciFiLite/rmx2151-salaa-uefi/actions/runs/41304338689). Merged into `main`, tagged `v0.4.0-uart-ufs.e8c47d9`, and closed PR #1. |
 | 2026-11-02 | Extracted live physical framebuffer parameters from phone `atag,videolfb` (`fb_base=0x75d30000`, `vramSize=0x02cd0000`, Tianma NT36672C, 60.15 Hz). Declared `PcdFrameBufferBase` and `PcdFrameBufferSize` PCDs. Added UFSHCI register sampling (VER, HCE, HCS, CAP, MTK_HW_VER); the initial interpretation of HCS[0] as media presence was later corrected and no longer appears in current code. |
-| 2026-11-02 | Re-audited the 108,172-byte F.11 sidecar (ZIP metadata/DTB/DTBOs), then found the 10.55 GB `RMX2151_F11.ofp` and its existing selective `selected_f11` extraction; no full extraction was run. Verified the 33,554,432-byte `boot.img` hash against the manifest and parsed header v2, 2048-byte pages, kernel `0x40080000`, ramdisk `0x47c80000`, and DTB/tags `0x4bc80000`. `lk.img`/`lk2.img` exist and are byte-identical; neither needs modification for a RAM boot. Hosted EDK run [41506437166](https://github.com/iSciFiLite/rmx2151-salaa-uefi/actions/runs/41506437166) built a fresh 4 MiB vanilla FD (SHA-256 `39e818e42a423053caef9e94d7b0426915ee0a68c08795cc10cb228f79809172`), released as [`v0.6.0-vanilla.82bb6d0`](https://github.com/iSciFiLite/rmx2151-salaa-uefi/releases/tag/v0.6.0-vanilla.82bb6d0); source audit [41506331762](https://github.com/iSciFiLite/rmx2151-salaa-uefi/actions/runs/41506331762) passed. The EDK workflow checksum path was corrected for future builds. No SALAA Android boot image has been produced: GitHub Actions cannot read the local extracted stock image. The first device test remains one-shot `fastboot boot`, not flashing. |
+| 2026-11-02 | Re-audited the 108,172-byte F.11 sidecar (ZIP metadata/DTB/DTBOs), then found the 10.55 GB `RMX2151_F11.ofp` and its existing selective `selected_f11` extraction; no full extraction was run. Verified the 33,554,432-byte `boot.img` hash against the manifest and parsed header v2, 2048-byte pages, kernel `0x40080000`, ramdisk `0x47c80000`, and DTB/tags `0x4bc80000`. `lk.img`/`lk2.img` exist and are byte-identical; neither needs modification for a RAM boot. Hosted EDK run [41506437166](https://github.com/iSciFiLite/rmx2151-salaa-uefi/actions/runs/41506437166) produced a vanilla FD; follow-up run [41507829182](https://github.com/iSciFiLite/rmx2151-salaa-uefi/actions/runs/41507829182) verified checksum/provenance generation and produced the released 4 MiB FD (SHA-256 `0cef01b241c42ae97dc2776e77e8bbe9431a7ad031eaaeed78f0036c59407c49`) at [`v0.6.1-vanilla.fd5785f`](https://github.com/iSciFiLite/rmx2151-salaa-uefi/releases/tag/v0.6.1-vanilla.fd5785f). Source audit [41507829921](https://github.com/iSciFiLite/rmx2151-salaa-uefi/actions/runs/41507829921) passed. Added a pinned hosted packer for a SALAA Android v2 boot image using BootShim + vanilla FD and the verified F.11 ramdisk/DTB. The packer is ready but has not run: Actions cannot read the local stock image until a temporary direct HTTPS URL is supplied. No phone boot has been tested; the intended first trial is `fastboot boot`, not flashing. |
 
 When a later change is built or device-tested, update this table and the status matrix with the exact date, commit, run/log link, and evidence. Do not convert a build pass into a hardware-support claim.
 
 ## Evidence needed from the rooted phone
-The matching F.11 stock `boot.img` is already present in the local selective extraction and has been verified against the manifest; no Termux dump or full OFP upload is needed to package that firmware version. GitHub Actions cannot read `/home/ubuntu/Salaa/salaa-firmware/work/selected_f11/boot.img`, however. To run a hosted SALAA boot-image packaging job, provide a temporary direct HTTPS download URL to that 32 MiB file. Do not upload the 10.5 GB OFP. The custom Android 16 QPR2 ROM is fine for read-only device checks; a dump of its active `boot` partition is optional if its current header should be compared with F.11. The first UEFI trial is `fastboot boot`, not flashing LK or the boot partition.
+The matching F.11 stock `boot.img` is already present in the local selective extraction and has been verified against the manifest; no Termux dump or full OFP upload is needed to package that firmware version. GitHub Actions cannot read the file from the local Ubuntu workspace, however. To run a hosted SALAA boot-image packaging job, provide a temporary direct HTTPS download URL to that 32 MiB file. Do not upload the 10.5 GB OFP. The custom Android 16 QPR2 ROM is fine for read-only device checks; a dump of its active `boot` partition is optional if its current header should be compared with F.11. The first UEFI trial is `fastboot boot`, not flashing LK or the boot partition.
 
 The framebuffer mode/virtual stride is now known, but the sysfs command did not return `line_length`, `smem_start`, or `smem_len`, and the filtered `dmesg` returned no matching lines. For the GOP contract and MTK UFS path, run these separately in Termux; each command escalates only for that read:
 

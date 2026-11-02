@@ -64,16 +64,16 @@ phone boot partition.
 The existing UEFI FD and BootShim are not themselves an Android boot image.
 The upstream HakiOS `mkxnuimg.py` packages a Redwood-specific FD at
 `0x9FD00000` (2 MiB) with Android header v1; that recipe is not reusable for
-SALAA's 4 MiB FD and reported v2 boot header. A first SALAA test should be a
-temporary `fastboot boot` image, not a `fastboot flash boot` operation. A
-working recipe needs to make the inspected stock boot files available to a
-hosted runner, a SALAA-adjusted packer that preserves its header/ramdisk/DTB,
-and an in-person test with a known recovery route. The boot files are presently
-available only on the Ubuntu data volume, which a GitHub Actions runner cannot
-read; they were not put in this repository because they are proprietary phone
-firmware. A one-shot `fastboot boot` test is the first device check; do not
-flash the generated image. The LK binary or a serial log would help analyze
-LK entry behavior, but is not required to package the temporary boot image.
+SALAA's 4 MiB FD and v2 boot header. A SALAA-specific packer and
+`SALAA one-shot UEFI boot image` GitHub Actions workflow now preserve the F.11
+header/ramdisk/DTB, replace its kernel with the gzip-compressed BootShim + FD,
+and verify the output. The workflow uses pinned, hash-checked AOSP and
+Mu-Silicium image tools and validates that the stock F.11 boot image matches
+its documented SHA-256. It has not run because the stock image is only on the
+Ubuntu data volume and GitHub Actions cannot read local files. Provide a
+temporary direct HTTPS URL to the 32 MiB `boot.img`; do not upload the full
+OFP. The generated image is a temporary `fastboot boot` test, not a
+`fastboot flash boot` image. LK modification is neither required nor planned.
 
 ## Current handset evidence
 
@@ -345,7 +345,7 @@ persistence are unsupported until those pieces are implemented and tested.
 
 ### Live GOP Framebuffer Hardware Evidence (`atag,videolfb`)
 
-Extracted and verified from the phone's live device tree (`/home/ubuntu/salaa-live.dtb`)
+Extracted and verified from the phone's live device tree (the owner-provided live DTB)
 node `/chosen/atag,videolfb`:
 
 - **Physical Framebuffer Base (`fb_base`)**: `0x75d30000`
