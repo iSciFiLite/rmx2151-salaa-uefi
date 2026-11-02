@@ -8,7 +8,7 @@ permissions:
 
 jobs:
   build-salaa-xnup:
-    runs-on: macos-15
+    runs-on: ubuntu-24.04
     timeout-minutes: 120
     steps:
       - name: Checkout SALAA UEFI packer
@@ -23,6 +23,25 @@ jobs:
           ref: f50d914084733cb9d302beaf39fa824a8d2fe41f
           path: hakios-mt6785
           fetch-depth: 1
+
+      - name: Install Linux XNU build dependencies and pinned Theos tools
+        run: |
+          set -euo pipefail
+          sudo apt-get update
+          sudo apt-get install --yes autoconf automake bison build-essential clang curl flex git lld m4 make perl python3 xz-utils
+          bash -c "\$(curl -fsSL https://raw.githubusercontent.com/theos/theos/6e7b8c40e0f5f9f5b2377800dc1e42cd2560d24a/bin/install-theos)"
+          if [ ! -d "$HOME/theos/sdks/iPhoneOS16.5.sdk" ]; then
+            git init "$HOME/theos/sdks-git"
+            git -C "$HOME/theos/sdks-git" remote add origin https://github.com/theos/sdks.git
+            git -C "$HOME/theos/sdks-git" sparse-checkout init --cone
+            git -C "$HOME/theos/sdks-git" sparse-checkout set iPhoneOS16.5.sdk
+            git -C "$HOME/theos/sdks-git" fetch --depth 1 origin 0222fd5413cf4b9af096f37b4621afa2688572f7
+            git -C "$HOME/theos/sdks-git" checkout --detach FETCH_HEAD
+            mkdir -p "$HOME/theos/sdks"
+            ln -s ../sdks-git/iPhoneOS16.5.sdk "$HOME/theos/sdks/iPhoneOS16.5.sdk"
+          fi
+          test -x "$HOME/theos/toolchain/linux/iphone/bin/ld"
+          test -d "$HOME/theos/sdks/iPhoneOS16.5.sdk/usr/include"
 
       - name: Build SALAA MT6785 XNU kernel and open hello ramdisk
         run: |
