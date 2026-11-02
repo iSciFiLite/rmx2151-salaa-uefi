@@ -43,7 +43,8 @@ framebuffer = (root / "Silicon/Silicium/SiliciumPkg/Drivers/SimpleFbDxe/SimpleFb
 for marker in (
     "PcdFrameBufferPixelsPerScanLine",
     "mFrameBuffer.Mode->Info->PixelsPerScanLine    = PixelsPerScanLine;",
-    "mFrameBuffer.Mode->FrameBufferSize = (UINT64)PixelsPerScanLine",
+    "*FrameBufferSize = FrameBufferRegion.Length;",
+    "mFrameBuffer.Mode->FrameBufferSize = FrameBufferSize;",
 ):
     if marker not in framebuffer:
         raise SystemExit(f"SALAA GOP stride/size support is missing: {marker}")
