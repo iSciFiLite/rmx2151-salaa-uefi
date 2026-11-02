@@ -407,6 +407,8 @@ does not use DP alone to claim a LUN is usable. Optional Block I/O handles
 still report no media; reads return `EFI_NO_MEDIA`. There is no UFS link
 initialization, LUN discovery, capacity discovery, or block transfer.
 Partition enumeration and XnuLoader persistence remain unsupported.
+The bit mapping follows the [Arm Trusted Firmware UFS register definitions](https://github.com/ARM-software/arm-trusted-firmware/blob/master/include/drivers/ufs.h)
+and the upstream [Linux UFS host-controller implementation](https://github.com/torvalds/linux/blob/master/drivers/ufs/core/ufshcd.c).
 
 ### Live GOP Framebuffer Hardware Evidence (`atag,videolfb`)
 
