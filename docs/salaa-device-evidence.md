@@ -277,13 +277,13 @@ ufs_mphy@11fa0000 {
 };
 ```
 
-The UFS Block I/O driver at
-`Silicon/MediaTek/MT6785Pkg/Drivers/UfsBlockIoDxe/` performs a live MMIO probe of
-the MT6785 UFSHCI controller at `0x11270000` (probing VER at 0x08, HCE at 0x34,
-HCS at 0x30, CAP at 0x00, and MTK_HW_VER at 0x2240). When LK leaves the controller
-enabled during bootloader handoff, it detects media presence and exposes 8 LUN
-Block I/O protocol handles with a 4096-byte logical block size for partition
-enumeration and HakiOS XnuLoader persistence.
+The probe-only UFS stub at
+`Silicon/MediaTek/MT6785Pkg/Drivers/UfsBlockIoDxe/` samples VER at 0x08, HCE at
+0x34, HCS at 0x30, CAP at 0x00, and MTK_HW_VER at 0x2240. HCS bit 0 is UCRDY,
+not device presence. Optional Block I/O handles now report no media; reads
+return `EFI_NO_MEDIA`. There is no UFS link initialization, LUN discovery,
+capacity discovery, or block transfer. Partition enumeration and XnuLoader
+persistence are unsupported until those pieces are implemented and tested.
 
 ### Live GOP Framebuffer Hardware Evidence (`atag,videolfb`)
 

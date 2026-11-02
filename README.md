@@ -13,7 +13,7 @@
 | HakiOS UEFI | Upstream BootShim/XNUP and BootManager/XnuLoader patch stack; SALAA overlay; separate hosted build and BootShim job | Build result is recorded in the latest [HakiOS integration Actions run](https://github.com/iSciFiLite/rmx2151-salaa-uefi/actions/workflows/hakios-uefi-build.yml). A successful compile is source integration only. It does not make the phone runtime-compatible. |
 | HakiOS/XNU fastboot handoff | FD layout matches the SALAA profile; XNUP window is reserved; workflow builds the AArch64 shim | Still needs a valid SALAA Android boot image/DTB/ramdisk, confirmed LK handoff, and hardware logs. The upstream XNU guide describes the payload at `0xF0000000` and a 64 MiB region; it does not document a SALAA test. |
 | GOP/framebuffer | Uses live-DT display reservation and reports 1080×2400, 32 bpp, **1088 pixels per scan line** | Rooted `fb0` output reports `mtkfb`, 32 bpp, virtual size `1088,9600`, and mode `U:1080x2400p-0`. Base address, actual byte pitch, pixel channel order, and lifetime across UEFI handoff still need confirmation. The DSI/panel is not initialized by this GOP driver. |
-| Internal UFS | Register probe at `0x11270000`; eight read-only 4096-byte Block I/O handles register when HCE/HCS indicate presence | Probe/protocol stub only: `ReadBlocks` zero-fills. There is no UFS command queue, PHY/link initialization, clock setup, or LUN capacity discovery. Storage access and XnuLoader logs do not work. |
+| Internal UFS | Register sample at `0x11270000`; optional eight Block I/O placeholders report no media | Probe only. HCS bit 0 is UCRDY, not device presence. No UFS command queue, PHY/link, clock setup, LUN capacity discovery, or storage reads; `ReadBlocks` returns `EFI_NO_MEDIA`. |
 | UART/serial | MT6785 SerialPortLib configures `0x11002000`, MTK mode 3, 115200-8N1 from an assumed 26 MHz clock | Hosted compilation only. UART output, pinmux, clock state, and boot handoff are not hardware-verified. |
 | USB | Generic USB bus, keyboard, and mass-storage class modules are included | They need a USB host-controller driver and board power/role setup, which are absent. |
 | CPU, GIC, timer, reset | Generic Arm drivers and the live-tree MT6785 GIC/core declarations | SMC/PSCI behavior, timer calibration, secondary CPU start, and reset behavior are not tested. |
@@ -120,7 +120,7 @@ The vanilla workflow uses Mu-Silicium commit `4bd8ae83bf37de41777f19e0777db70f59
 | HakiOS integration | ✅ | Pinned HakiOS build + BootShim CI pass; release published (Actions: 41304338689) |
 | XNU handoff | ⚠️ | XNUP window reserved (0xF0000000); BootShim configured; phone runtime fastboot handoff unverified on hardware |
 | **UART SerialPortLib** | ⚠️ | EDK II source compiles; `0x11002000`, 115200-8N1 / assumed 26 MHz; physical output not captured |
-| **UFS Block I/O** | ⚠️ | MMIO probe and eight protocol handles compile; reads zero-fill; no UFS command/link driver or usable media |
+| **UFS Block I/O** | ⚠️ | Register probe and no-media placeholders compile; no UFS command/link driver or usable media |
 | USB class stack | ⚠️ | Generic UEFI USB bus/HID/storage class modules present; SoC xHCI host controller driver unported |
 | PSCI / secondary CPU | ⚠️ | Standard Arm PSCI interface used; secondary CPU startup unverified on physical hardware |
 | DSI / panel init | ⚠️ | LK-owned framebuffer handoff utilized; native panel init not required when bootloader initializes display |
@@ -136,7 +136,7 @@ The vanilla workflow uses Mu-Silicium commit `4bd8ae83bf37de41777f19e0777db70f59
 4. **SimpleFbDxe override** — stride-aware SimpleFb in SALAA overlay.
 5. **HakiOS UEFI integration** — pinned workflow, `apply.sh` simulation, BootShim build, v0.3.0-hakios release.
 6. **UART SerialPortLib** — `MT6785SerialPortLib` implementing `mediatek,mt6577-uart` at `0x11002000` (8250-compat, MTK high-speed mode 3, 115200-8N1 / 26 MHz). Baud parameters derived from device kernel `8250_mtk.c` and confirmed DTS node.
-7. **UFS Block I/O stub** — `MT6785UfsBlockIoDxe` registering 8 LUN handles (HCI `0x11270000`, PHY `0x11fa0000`); reads blocked pending full driver.
+7. **UFS Block I/O stub** — `MT6785UfsBlockIoDxe` samples controller registers and registers no-media placeholders; no LUN discovery or data transfers.
 8. **Firmware evidence** — F.11 OFP scatter, LK2 header analysis, UART DTS node (GPIO53=RX, GPIO54=TX), UFS DTS node, all documented in `docs/salaa-device-evidence.md`.
 
 ### What has NOT been done
@@ -218,3 +218,4 @@ SALAA platform code and imported Mu-Silicium SEC/driver code retain the upstream
 - Firmware, HakiOS integration, and source audit runs [41378781111](https://github.com/iSciFiLite/rmx2151-salaa-uefi/actions/runs/41378781111), [41378781123](https://github.com/iSciFiLite/rmx2151-salaa-uefi/actions/runs/41378781123), and [41378781125](https://github.com/iSciFiLite/rmx2151-salaa-uefi/actions/runs/41378781125) succeeded. They verify compile/source/FD structure, not phone operation.
 - XNU kernel compilation, SALAA-specific boot-image packaging, EFI loader execution, `ExitBootServices`, functional UFS reads, and physical boot remain open. A successful XNU compile would verify source/toolchain closure and provide a kernel candidate, not device compatibility.
 - Tag `v0.5.0-final.04909b6` is preserved; its prerelease distribution contains hosted checkpoint firmware artifacts. Earlier releases remain intact.
+- Follow-up source correction: UFSHCI `HCS[0]` is UCRDY, not device presence. Placeholder Block I/O handles now report no media and `ReadBlocks` returns `EFI_NO_MEDIA`; the fake capacity and zero-filled-success behavior are removed. This remains a probe stub, not a UFS driver.
