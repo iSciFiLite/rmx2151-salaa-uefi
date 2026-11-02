@@ -14,13 +14,47 @@ its boot arguments contain a device serial number.
 
 The 2026-11-02 file named `SALAA_F11_mainline_inputs.tar` was identified as a
 ZIP archive by its file signature. Its SHA-256 matches the F.11 ZIP already
-listed above, so it adds no new firmware input. No full OFP extraction was
-performed for this update.
+listed above. The archive contains only a markdown manifest, `build.prop`, two
+scatter descriptions, one base DTB, and three DTBOs; it contains no OFP, boot
+partition image, ramdisk, `lk.bin`, or `lk2.bin`. No full OFP extraction was
+performed.
 
 The F.11 manifest identifies RMX2151L1 / RM6785 / MT6785 and firmware
 `RMX2151_11.F.11_3110_202211171630` (Android 12, vendor Linux 4.14.186).
 This is the supplied firmware package identity; the live handset reports a
 different build fingerprint below.
+
+### Stock boot-image metadata and missing binaries — 2026-11-02
+
+The supplied F.11 manifest reports an Android boot image v2, 2048-byte page
+size, 33,554,432-byte stock `boot.img`, kernel load address `0x40080000`,
+ramdisk address `0x47c80000`, and tags/DTB address `0x4bc80000`. It records
+DTB size 141,677 bytes and boot-image SHA-256
+`27227c7345e412998ec7394dd37646adc5da8614f71d5653f747840fcdcc57c5`.
+These are manifest claims only: the image bytes were not attached, so size,
+hash, header, ramdisk, and load fields have not been checked against the
+binary or the currently running phone. The manifest's boot DTB is separate
+from the supplied live DTB, and neither LK binary nor a bootloader handoff log
+was provided.
+
+As a cross-check, the supplied device-tree repository's public
+[`lineage-23.2/BoardConfig.mk`](https://github.com/elohim-etz/android_device_realme_RM6785/blob/lineage-23.2/BoardConfig.mk)
+sets header v2, 2048-byte pages, kernel base `0x40078000` plus offset
+`0x8000` (effective `0x40080000`), ramdisk offset `0x07c08000`, and DTB/tags
+offset `0x0bc08000`. This corroborates the manifest's layout for that Android
+build configuration; it does not verify the absent F.11 image or current
+phone boot partition.
+
+The existing UEFI FD and BootShim are not themselves an Android boot image.
+The upstream HakiOS `mkxnuimg.py` packages a Redwood-specific FD at
+`0x9FD00000` (2 MiB) with Android header v1; that recipe is not reusable for
+SALAA's 4 MiB FD and reported v2 boot header. A first SALAA test should be a
+temporary `fastboot boot` image, not a `fastboot flash boot` operation. A
+working recipe still needs the exact current phone boot image (or its
+verified header, ramdisk, and DTB components), a SALAA-adjusted packer, and an
+in-person test with a known recovery route. The LK binary is not needed to
+construct a temporary image; it or a serial handoff log is needed only to
+prove bootloader load/entry behavior independently of the device test.
 
 ## Current handset evidence
 
