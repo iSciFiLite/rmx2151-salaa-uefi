@@ -34,6 +34,7 @@ jobs:
             'https://github.com/L1ghtmann/llvm-project/releases/download/test-210562a/iOSToolchain-x86_64.tar.xz' \
             --output "$RUNNER_TEMP/iOSToolchain-x86_64.tar.xz"
           test "$(stat -c %s "$RUNNER_TEMP/iOSToolchain-x86_64.tar.xz")" = 86163280
+          echo 'a72a7a577e2fbe2838b6b5e9c72034fa7d114af96f0e1d4b016f18730ce4056e  '"$RUNNER_TEMP/iOSToolchain-x86_64.tar.xz" | sha256sum --check -
           sha256sum "$RUNNER_TEMP/iOSToolchain-x86_64.tar.xz" | awk '{print $1}' > "$RUNNER_TEMP/theos-toolchain.sha256"
           tar -xJf "$RUNNER_TEMP/iOSToolchain-x86_64.tar.xz" -C "$HOME/theos/toolchain"
           echo "THEOS_TOOLCHAIN_SHA256=$(cat "$RUNNER_TEMP/theos-toolchain.sha256")" >> "$GITHUB_ENV"
@@ -204,5 +205,5 @@ jobs:
             output/SHA256SUMS \
             output/verification.json \
             output/PROVENANCE.md \
-            output/XNU-PROVENANCE.md
+            output/XNU-PROVENANCE.md \
             output/THEOS-TOOLCHAIN.sha256
