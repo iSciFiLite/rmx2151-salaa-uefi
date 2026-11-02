@@ -77,10 +77,16 @@ the intended HakiOS/XNU image. The F.11 input is held in a draft-only GitHub
 release asset and downloaded by Actions with the repository token; it is not
 in Git or a public input release. A separate hosted workflow now builds the
 pinned MT6785 SALAA XNU kernel and open `hello` ramdisk, packages them as XNUP,
-and combines that with the matching HakiOS SALAA FD + BootShim. That workflow
-has not yet completed. Either image is for `fastboot boot` testing only, not a
-flashable `boot` partition image. LK modification is neither required nor
-planned.
+and combines that with the matching HakiOS SALAA FD + BootShim. Hosted run
+`41517036914` was the first pinned-toolchain candidate; it exposed a release
+shell continuation defect after uploading the main assets. The fix was applied,
+and clean end-to-end run `41520513335` passed both build and package jobs. Its
+image, XNUP, kernel, ramdisk, toolchain hash, verification, and provenance are
+released at
+[`v0.7.1-hakios-xnu.41520513335`](https://github.com/iSciFiLite/rmx2151-salaa-uefi/releases/tag/v0.7.1-hakios-xnu.41520513335).
+The complete release was downloaded and every item in `SHA256SUMS` verified.
+Either image is for `fastboot boot` testing only, not a flashable `boot`
+partition image. LK modification is neither required nor planned.
 
 ## Current handset evidence
 
