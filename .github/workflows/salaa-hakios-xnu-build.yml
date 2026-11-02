@@ -51,6 +51,7 @@ jobs:
           make DEVICE=salaa salaa_defconfig
           xnu/apply.sh
           xnu-deps/setup.sh --stage1
+          ln -sfn "$HOME/theos/toolchain/linux/iphone/bin/dsymutil" xnu-deps/host/bin/dsymutil
           if ! xnu-deps/setup.sh --stage2; then
             cat xnu-deps/exporthdrs.log || true
             exit 1
