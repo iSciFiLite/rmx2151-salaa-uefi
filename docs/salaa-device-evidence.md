@@ -399,11 +399,14 @@ ufs_mphy@11fa0000 {
 
 The probe-only UFS stub at
 `Silicon/MediaTek/MT6785Pkg/Drivers/UfsBlockIoDxe/` samples VER at 0x08, HCE at
-0x34, HCS at 0x30, CAP at 0x00, and MTK_HW_VER at 0x2240. HCS bit 0 is UCRDY,
-not device presence. Optional Block I/O handles now report no media; reads
-return `EFI_NO_MEDIA`. There is no UFS link initialization, LUN discovery,
-capacity discovery, or block transfer. Partition enumeration and XnuLoader
-persistence are unsupported until those pieces are implemented and tested.
+0x34, HCS at 0x30, CAP at 0x00, and MTK_HW_VER at 0x2240. The JEDEC/Arm/Linux
+UFSHCI mapping is `DP=HCS[0]`, `UTRLRDY=HCS[1]`, `UTMRLRDY=HCS[2]`, and
+`UCRDY=HCS[3]`; older project documentation incorrectly assigned UCRDY to bit
+0 and has been corrected. The probe now reports these states separately but
+does not use DP alone to claim a LUN is usable. Optional Block I/O handles
+still report no media; reads return `EFI_NO_MEDIA`. There is no UFS link
+initialization, LUN discovery, capacity discovery, or block transfer.
+Partition enumeration and XnuLoader persistence remain unsupported.
 
 ### Live GOP Framebuffer Hardware Evidence (`atag,videolfb`)
 
@@ -421,3 +424,9 @@ This proves that the physical framebuffer memory is mapped at `0x75d30000`–`0x
 which exactly aligns with the `Display Reserved` descriptor in `MemoryMapLib.c`.
 The `PcdFrameBufferBase` and `PcdFrameBufferSize` PCDs in `SalaaPkg.dec` / `SalaaPkg.dsc`
 now lock in this exact address.
+
+The SALAA SimpleFb override reports the complete `0x02cd0000` reserved range
+as GOP `FrameBufferSize`; GOP mode information remains the visible
+1080×2400 surface with 1088 pixels per scan line. This matches the Linux
+allocation evidence without claiming that GOP scanout, pixel order, or
+post-handoff display lifetime has been tested on the phone.

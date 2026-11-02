@@ -11,13 +11,13 @@
   0x11270000:
     - CAP   (0x00): Controller Capabilities
     - VER   (0x08): UFS Version (0x00000210 for UFS 2.1)
-    - HCS   (0x30): Host Controller Status (bit 0 = UCRDY)
+    - HCS   (0x30): Host Controller Status (DP=bit 0, UCRDY=bit 3)
     - HCE   (0x34): Host Controller Enable (bit 0 = Controller Enabled)
     - MTKHW (0x2240): MediaTek UFS Hardware Version
 
-  This is a probe-only stub. HCS bit 0 is UCRDY, not device presence. It does
-  not initialize the UFS link, discover LUNs or capacity, or transfer blocks.
-  Its optional protocol placeholders always report no media.
+  This is a probe-only stub. It does not initialize the UFS link, discover
+  LUNs or capacity, or transfer blocks. Its optional protocol placeholders
+  always report no media.
 
   References:
    - "ufshci@11270000" in stock-salaa-1.dts (reg 0x11270000, size 0x2300)
@@ -53,8 +53,11 @@
 /* HCE bits */
 #define HCE_ENABLE                 BIT0
 
-/* UFSHCI HCS bit 0 is UCRDY, not a device-presence flag. */
-#define HCS_UCRDY                  BIT0
+/* UFSHCI 2.x Host Controller Status bits (JEDEC UFSHCI register map). */
+#define HCS_DP                     BIT0
+#define HCS_UTRLRDY                BIT1
+#define HCS_UTMRLRDY               BIT2
+#define HCS_UCRDY                  BIT3
 
 /* Number of UFS LUNs exposed (UFS 2.1 default) */
 #define MT6785_UFS_LUN_COUNT       8U
@@ -174,10 +177,14 @@ UfsBlockIoDxeInitialise (
 
   ControllerEnabled = ((Hce & HCE_ENABLE) != 0);
   DEBUG ((DEBUG_INFO,
-    "MT6785 UFS Probe: HCI=0x%08llX VER=0x%08X HCE=0x%08X HCS=0x%08X CAP=0x%08X MTKHW=0x%08X (Enabled=%d, UCRDY=%d)\n",
+    "MT6785 UFS Probe: HCI=0x%08llX VER=0x%08X HCE=0x%08X HCS=0x%08X CAP=0x%08X MTKHW=0x%08X (Enabled=%d DP=%d UCRDY=%d UTRLRDY=%d UTMRLRDY=%d)\n",
     (UINT64)MT6785_UFS_HCI_BASE,
     Ver, Hce, Hcs, Cap, MtkHw,
-    ControllerEnabled, ((Hcs & HCS_UCRDY) != 0)));
+    ControllerEnabled,
+    ((Hcs & HCS_DP) != 0),
+    ((Hcs & HCS_UCRDY) != 0),
+    ((Hcs & HCS_UTRLRDY) != 0),
+    ((Hcs & HCS_UTMRLRDY) != 0)));
 
   for (Lun = 0; Lun < MT6785_UFS_LUN_COUNT; Lun++) {
     Dev = AllocateZeroPool (sizeof (SALAA_UFS_DEV));

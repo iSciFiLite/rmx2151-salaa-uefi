@@ -95,7 +95,8 @@ GetFrameBufferInfos (
   OUT UINT32               *Width,
   OUT UINT32               *Height,
   OUT UINT32               *ColorDepth,
-  OUT UINT32               *PixelsPerScanLine)
+  OUT UINT32               *PixelsPerScanLine,
+  OUT UINT64               *FrameBufferSize)
 {
   EFI_MEMORY_REGION_DESCRIPTOR FrameBufferRegion;
   EFI_STATUS                    Status;
@@ -141,6 +142,16 @@ GetFrameBufferInfos (
 
   // Pass Frame Buffer Address
   *BaseAddress = FrameBufferRegion.Address;
+  *FrameBufferSize = FrameBufferRegion.Length;
+
+  DEBUG ((DEBUG_INFO,
+    "SALAA GOP: base=0x%llX size=0x%llX visible=%ux%u stride=%u depth=%u\n",
+    (UINT64)*BaseAddress,
+    *FrameBufferSize,
+    *Width,
+    *Height,
+    *PixelsPerScanLine,
+    *ColorDepth));
 
   return EFI_SUCCESS;
 }
@@ -176,6 +187,7 @@ AllocateGopMemory ()
 EFI_STATUS
 SetFrameBufferModeDetails (
   IN EFI_PHYSICAL_ADDRESS BaseAddress,
+  IN UINT64               FrameBufferSize,
   IN UINT32               Width,
   IN UINT32               Height,
   IN UINT32               ColorDepth,
@@ -188,9 +200,10 @@ SetFrameBufferModeDetails (
   mFrameBuffer.Mode->MaxMode = 1;
   mFrameBuffer.Mode->Mode    = 0;
 
-  // Set Frame Buffer Range
+  // Preserve the full measured LK-owned allocation (virtual_size is 1088x9600)
+  // while Mode->Info continues to describe the visible 1080x2400 surface.
   mFrameBuffer.Mode->FrameBufferBase = BaseAddress;
-  mFrameBuffer.Mode->FrameBufferSize = (UINT64)PixelsPerScanLine * Height * (ColorDepth / 8);
+  mFrameBuffer.Mode->FrameBufferSize = FrameBufferSize;
 
   // Set Mode Info Version
   mFrameBuffer.Mode->Info->Version = 0;
@@ -285,13 +298,14 @@ RegisterFrameBuffer (
 {
   EFI_STATUS           Status;
   EFI_PHYSICAL_ADDRESS BaseAddress;
+  UINT64               FrameBufferSize;
   UINT32               Width;
   UINT32               Height;
   UINT32               ColorDepth;
   UINT32               PixelsPerScanLine;
 
   // Get Frame Buffer Infos
-  Status = GetFrameBufferInfos (&BaseAddress, &Width, &Height, &ColorDepth, &PixelsPerScanLine);
+  Status = GetFrameBufferInfos (&BaseAddress, &Width, &Height, &ColorDepth, &PixelsPerScanLine, &FrameBufferSize);
   if (EFI_ERROR (Status)) {
     return Status;
   }
@@ -303,7 +317,7 @@ RegisterFrameBuffer (
   }
 
   // Set Frame Buffer Mode Details
-  Status = SetFrameBufferModeDetails (BaseAddress, Width, Height, ColorDepth, PixelsPerScanLine);
+  Status = SetFrameBufferModeDetails (BaseAddress, FrameBufferSize, Width, Height, ColorDepth, PixelsPerScanLine);
   if (EFI_ERROR (Status)) {
     goto cleanup;
   }
