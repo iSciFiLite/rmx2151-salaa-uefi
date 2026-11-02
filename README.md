@@ -14,8 +14,8 @@
 | HakiOS/XNU fastboot handoff | SALAA MT6785 kernel config and UEFI profile; hosted XNU build and XNUP packaging | The combined image uses the matching HakiOS FD and BootShim plus the pinned MT6785 kernel in HakiOS's XNUP format. Hosted builds do not establish phone compatibility. |
 | Vanilla UEFI diagnostic boot image | **Produced and hosted-verified** as [v0.7.0-bootimg.41512150665](https://github.com/iSciFiLite/rmx2151-salaa-uefi/releases/tag/v0.7.0-bootimg.41512150665) | 1,951,744-byte Android v2 image, SHA-256 `59a416bb6e99884ee1401f0cd20d3e5440bfc31a6e8fcc72eef169a4241b75d3`. Combines gzip(BootShim + vanilla SALAA FD) with matching F.11 header/ramdisk/DTB. Diagnostic only; it is not the intended HakiOS/XNU image. |
 | SALAA HakiOS/XNU boot image | **Combined image released; phone test pending** | Uses the pinned MT6785 kernel and open `hello` ramdisk in XNUP, matching HakiOS SALAA FD + BootShim, and F.11 v2 wrapper/ramdisk/DTB. UFS root is disabled. `fastboot boot` only; no phone test yet. |
-| GOP/framebuffer | Uses live-DT display reservation and reports 1080×2400, 32 bpp, **1088 pixels per scan line** | Rooted `fb0` output reports `mtkfb`, 32 bpp, virtual size `1088,9600`, and mode `U:1080x2400p-0`. Base address, actual byte pitch, pixel channel order, and lifetime across UEFI handoff still need confirmation. The DSI/panel is not initialized by this GOP driver. |
-| Internal UFS | Register sample at `0x11270000`; optional eight Block I/O placeholders report no media | Probe only. HCS bit 0 is UCRDY, not device presence. No UFS command queue, PHY/link, clock setup, LUN capacity discovery, or storage reads; `ReadBlocks` returns `EFI_NO_MEDIA`. |
+| GOP/framebuffer | Uses live-DT display reservation and reports 1080×2400, 32 bpp, **1088 pixels per scan line** | `fb0` reports `mtkfb`, 32 bpp, virtual size `1088,9600`; owner-supplied Linux pstore independently logs PA `0x75d30000–0x789fffff`, matching the known 46,989,312-byte allocation. Actual byte pitch, pixel channel order, scanout, and lifetime across UEFI handoff still need confirmation. The DSI/panel is not initialized by this GOP driver. |
+| Internal UFS | Register sample at `0x11270000`; optional eight Block I/O placeholders report no media | Android pstore confirms Linux MTK UFSHCI at this address negotiates gear 3 and enumerates Samsung `KM8V8001JM-B813`, direct-access LUNs 0/1. UEFI remains probe-only: HCS bit 0 is UCRDY, not device presence; no UFS command queue, PHY/link, clock setup, LUN capacity discovery, or storage reads. `ReadBlocks` returns `EFI_NO_MEDIA`. |
 | UART/serial | MT6785 SerialPortLib configures `0x11002000`, MTK mode 3, 115200-8N1 from an assumed 26 MHz clock | Hosted compilation only. UART output, pinmux, clock state, and boot handoff are not hardware-verified. |
 | USB | Generic USB bus, keyboard, and mass-storage class modules are included | MT6785 SSUSB/xHCI host driver and role/power setup are absent. USB peripherals are not expected to work yet; this is not a blocker for the current `fastboot boot` smoke test. |
 | CPU, GIC, timer, reset | Generic Arm/GIC code and MT6785 core/PSCI declarations are included | PSCI uses the declared SMC conduit; timer calibration, secondary CPU start, and reset behavior require on-device testing after UEFI starts. |
@@ -202,7 +202,8 @@ All dates below are UTC and refer to repository/CI work unless explicitly labele
 | 2026-11-02 | Extracted live physical framebuffer parameters from phone `atag,videolfb` (`fb_base=0x75d30000`, `vramSize=0x02cd0000`, Tianma NT36672C, 60.15 Hz). Declared `PcdFrameBufferBase` and `PcdFrameBufferSize` PCDs. Added UFSHCI register sampling (VER, HCE, HCS, CAP, MTK_HW_VER); the initial interpretation of HCS[0] as media presence was later corrected and no longer appears in current code. |
 | 2026-11-02 | Re-audited the 108,172-byte F.11 sidecar (ZIP metadata/DTB/DTBOs), then found the 10.55 GB `RMX2151_F11.ofp` and its existing selective `selected_f11` extraction; no full extraction was run. Verified the 33,554,432-byte `boot.img` hash against the manifest and parsed header v2, 2048-byte pages, kernel `0x40080000`, ramdisk `0x47c80000`, and DTB/tags `0x4bc80000`. `lk.img`/`lk2.img` exist and are byte-identical; neither needs modification for a RAM boot. Hosted EDK run [41506437166](https://github.com/iSciFiLite/rmx2151-salaa-uefi/actions/runs/41506437166) produced a vanilla FD; follow-up [41507829182](https://github.com/iSciFiLite/rmx2151-salaa-uefi/actions/runs/41507829182) released the 4 MiB FD (SHA-256 `0cef01b241c42ae97dc2776e77e8bbe9431a7ad031eaaeed78f0036c59407c49`) at [`v0.6.1-vanilla.fd5785f`](https://github.com/iSciFiLite/rmx2151-salaa-uefi/releases/tag/v0.6.1-vanilla.fd5785f). F.11 boot input is staged in a draft-only release, not Git. Commit `e437578` produced the vanilla diagnostic Android v2 image in Actions [41512150665](https://github.com/iSciFiLite/rmx2151-salaa-uefi/actions/runs/41512150665); it passed header, load-address, payload, ramdisk/DTB, checksum, and size checks and is published at [`v0.7.0-bootimg.41512150665`](https://github.com/iSciFiLite/rmx2151-salaa-uefi/releases/tag/v0.7.0-bootimg.41512150665) (1,951,744 bytes; SHA-256 `59a416bb6e99884ee1401f0cd20d3e5440bfc31a6e8fcc72eef169a4241b75d3`). This image uses vanilla FD and has no XNUP; it is a diagnostic, not the HakiOS/XNU target. The companion MT6785 tree has a SALAA XNU configuration and a prior successful hosted compile [41252760580](https://github.com/iSciFiLite/hakios-mt6785/actions/runs/41252760580), but that workflow did not publish a kernel artifact. Its ignored local prebuilt has a different SHA from the recorded CI output and is not reused. Added a SALAA-specific workflow using pinned HakiOS MT6785 source, HakiOS's own XNUP builder, a pinned Theos Linux toolchain/SDK, the HakiOS SALAA FD+BootShim, and the private F.11 boot input. The first hosted compile/package and release evidence are in the following milestone row; full Darwin userland and device boot remain unverified. |
 | 2026-11-02 (hosted HakiOS/XNU milestone) | Run [41516039804](https://github.com/iSciFiLite/rmx2151-salaa-uefi/actions/runs/41516039804) produced an initial image whose provenance used the vanilla command. Run [41517036914](https://github.com/iSciFiLite/rmx2151-salaa-uefi/actions/runs/41517036914) rebuilt with corrected image naming and a pinned Theos Linux toolchain/SDK; its kernel and package validation passed, but the release step missed the toolchain checksum asset because of a shell continuation typo. The sidecar was attached, the workflow corrected, and the clean end-to-end rerun [41520513335](https://github.com/iSciFiLite/rmx2151-salaa-uefi/actions/runs/41520513335) passed both jobs and published [`v0.7.1-hakios-xnu.41520513335`](https://github.com/iSciFiLite/rmx2151-salaa-uefi/releases/tag/v0.7.1-hakios-xnu.41520513335). The 7,464,960-byte image SHA-256 is `b4bf5a1081cd2155a21c0345a22921bbe815e561f9c0fd1e6632d9d5cff611d3`; XNUP SHA-256 is `d8d37e0f895825b8c3186431e3c725be83851fe2533e7d1ab260766697539b41`. The release's complete checksum list validated after download. Earlier releases and the prior candidate remain preserved. This completes hosted packaging, not physical boot validation. |
-| 2026-11-02 (owner-supplied Termux evidence) | Ran the three read-only queries now recorded verbatim in `docs/salaa-device-evidence.md`: framebuffer sysfs attributes, filtered `dmesg`, and `/dev/block/by-name` links. Results: `mtkfb`, 32 bpp, virtual size `1088,9600`; no values for line length/framebuffer address/length/format; no matching log lines; aliases `dtbo→sdc45`, `lk2→sdc42`, `boot_para→sdc28`, `lk→sdc41`, `logo→sdc44`, `boot→sdc43`. These observations do not verify GOP output or UFS operation. Requested three additional read-only Termux queries in **Next read-only phone checks** (boot-state properties, SCSI/UFS host metadata, pstore); results are pending from the owner. |
+| 2026-11-02 (owner-supplied Termux evidence) | Ran the three read-only queries recorded in `docs/salaa-device-evidence.md`: framebuffer sysfs attributes, filtered `dmesg`, and `/dev/block/by-name` links. Results: `mtkfb`, 32 bpp, virtual size `1088,9600`; no values for line length/framebuffer address/length/format; no matching `dmesg` lines; aliases `dtbo→sdc45`, `lk2→sdc42`, `boot_para→sdc28`, `lk→sdc41`, `logo→sdc44`, `boot→sdc43`. These observations do not verify GOP output or UFS operation. |
+| 2026-11-02 (owner attachment follow-up) | Reviewed `commands-info.txt` without committing it because pstore includes a serial-bearing boot command line. The supplied results cover the previously requested `getprop` loop, `/sys/class/scsi_host/host*` metadata, and `/sys/fs/pstore/*`. They report Android properties `flash.locked=1`, `vbmeta.device_state=locked`, verified state green; host `ufshcd`; Linux framebuffer allocation `0x75d30000–0x789fffff`; and MTK UFS link at `0x11270000`, gear 3, Samsung `KM8V8001JM-B813`, direct-access LUNs 0/1. These are Linux/hardware references, not UEFI functionality. The owner-reported Android 16 QPR2 ROM and attached Android 12 fingerprint disagree; fastboot host state is still pending. Next requested host commands: `fastboot devices`, `fastboot getvar product`, `fastboot getvar unlocked`, `fastboot getvar secure`; no boot attempt until unlock and recovery are confirmed. |
 
 When a later change is built or device-tested, update this table and the status matrix with the exact date, commit, run/log link, and evidence. Do not convert a build pass into a hardware-support claim.
 
@@ -217,25 +218,37 @@ line length/base/size/format sysfs files returned no values; the selected
 [`docs/salaa-device-evidence.md`](docs/salaa-device-evidence.md)). This does
 not establish GOP scanout correctness, UFS LUN mapping, or LK's UEFI handoff.
 
-### Next read-only phone checks
+The owner then supplied `commands-info.txt`. Its sanitized findings and
+limits are recorded in [`docs/salaa-device-evidence.md`](docs/salaa-device-evidence.md):
+Linux pstore corroborates framebuffer physical range `0x75d30000–0x789fffff`
+and shows Android's MTK UFS driver at `0x11270000` negotiating gear 3 and
+enumerating Samsung `KM8V8001JM-B813` direct-access LUNs 0 and 1. This is
+useful hardware reference evidence, not UEFI GOP or UFS validation. The
+attachment's properties report a Realme Android 12 fingerprint and locked /
+green verified-boot values, while the owner describes the current ROM as
+Android 16 QPR2 Pixel-based. Treat the ROM identity and lock state as
+unresolved until confirmed by the external fastboot host. The raw attachment
+is not committed because pstore contains a serial-bearing boot command line.
 
-Please run these in Termux and paste the output here, redacting serials/UUIDs.
-They check the current verified-boot state and whether Android exposes UFS
-host metadata; they do not change device state:
+### Next: read-only fastboot host preflight
+
+No more Termux output is needed for the checks already present in
+`commands-info.txt`. From a separate computer with Android platform-tools,
+connect the phone in bootloader/fastboot mode and run these read-only queries;
+paste the output here before any boot attempt:
 
 ```sh
-su -c 'for p in ro.product.model ro.build.fingerprint ro.boot.flash.locked ro.boot.vbmeta.device_state ro.boot.verifiedbootstate ro.bootmode; do printf "%s=" "$p"; getprop "$p"; done'
-su -c 'for h in /sys/class/scsi_host/host*; do [ -e "$h" ] || continue; printf "=== %s ===\n" "$h"; cat "$h/proc_name" 2>/dev/null; cat "$h/uevent" 2>/dev/null; done'
-su -c 'for f in /sys/fs/pstore/*; do [ -f "$f" ] || continue; printf "=== %s ===\n" "$f"; cat "$f"; done'
+fastboot devices
+fastboot getvar product 2>&1
+fastboot getvar unlocked 2>&1
+fastboot getvar secure 2>&1
 ```
 
-The first-boot test still requires a separate computer with `fastboot`, an
-unlocked bootloader, and a recovery route already known to the owner. Do not
-flash any partition. Once those prerequisites are confirmed, use the
-controlled `fastboot boot` procedure below and send the complete host log.
-Do not upload a full `xbl`/firmware image publicly; any private firmware
-inspection must be limited to the needed driver metadata and licensing must
-be checked before redistribution.
+Only consider the temporary `fastboot boot` procedure below if the bootloader
+reports unlocked and you have a known recovery route. Do not flash any
+partition. Do not upload a full `xbl`/firmware image publicly; private
+firmware inspection must be limited to needed driver metadata and checked
+for redistribution rights.
 
 ### First combined-image test and what it can prove
 

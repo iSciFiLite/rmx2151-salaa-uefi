@@ -130,6 +130,24 @@ not proof of the UEFI boot contract, UFS LUN mapping, or permission to write
 those partitions. The combined `printf` output has no newline between fields,
 which explains why empty fields run together in the pasted terminal output.
 
+### Sanitized follow-up snapshot — owner attachment, 2026-11-02
+
+The owner supplied `commands-info.txt` (262,449 bytes). The raw file is not
+committed because its pstore boot command line contains the handset serial.
+Only relevant, sanitized results are retained:
+
+| Read-only source | Reported result | What it establishes / does not establish |
+|---|---|---|
+| Android properties | `RMX2151L1`; fingerprint `realme/RMX2156T2/RMX2156L1:12/...`; `ro.boot.flash.locked=1`; `ro.boot.vbmeta.device_state=locked`; `ro.boot.verifiedbootstate=green`; `ro.bootmode=normal` | Identifies the handset properties in this snapshot. The fingerprint says Android 12 while the owner describes the currently used ROM as Android 16 QPR2 Pixel-based; this mismatch is unresolved and properties can be inherited or overridden by a ROM. Do not infer bootloader state from these properties alone. |
+| `/sys/class/scsi_host/host0/proc_name` | `ufshcd` | Android's kernel exposes a UFS host. It is not evidence that the UEFI Block I/O driver works. |
+| pstore `console-ramoops` display log | Framebuffer PA start `0x75d30000`, end `0x789fffff` (inclusive) | Matches the previously decoded `0x02cd0000` allocation size and corroborates the Linux-side reservation. Does not prove GOP pixel format, scanout after handoff, or framebuffer lifetime. |
+| pstore UFS log | MTK UFSHCI at `0x11270000`; link changes from gear 1 slow-auto to gear 3 fast mode, one lane each direction, rate 2; Samsung `KM8V8001JM-B813`; direct-access SCSI LUNs 0 and 1 appear | Confirms the Android vendor kernel initialized this physical UFS device and enumerated media. It supplies reference behavior for a future UEFI driver; it does not implement or validate UEFI UFS PHY/link/transfer support. |
+
+The snapshot's `flash.locked=1` and `vbmeta.device_state=locked` make the
+fastboot preflight especially important. Confirm the bootloader state from
+the external fastboot host before considering a RAM boot. No flash command
+is authorized or needed.
+
 The supplied `/proc/iomem` exposes these discontiguous System RAM intervals:
 
 ```text
