@@ -24,6 +24,16 @@ The F.11 manifest identifies RMX2151L1 / RM6785 / MT6785 and firmware
 This is the supplied firmware package identity; the live handset reports a
 different build fingerprint below.
 
+The bundled `metadata/build.prop` independently identifies stock F.11 as
+`RMX2151_11_F.11` / Android 12, model `RMX2151`, with
+`ro.build.fingerprint=realme/RMX2151/RMX2151L1:12/SP1A.210812.016/Q.bf75e7-1:user/release-keys`.
+This is static stock-firmware identity available from the supplied bundle;
+it does not identify the currently booted custom ROM. The separate live
+Termux snapshot reports another Realme fingerprint, and `commands-info.txt`
+reports that same Android 12 fingerprint despite the owner's current-ROM
+description of Android 16 QPR2. That discrepancy does not require another
+fingerprint request for the UEFI work.
+
 ### Selective F.11 boot-chain inspection — 2026-11-02
 
 The Ubuntu data volume contains the 10,546,675,416-byte
