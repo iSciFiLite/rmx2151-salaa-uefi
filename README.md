@@ -17,9 +17,11 @@
 | GOP/framebuffer | Uses live-DT display reservation and reports 1080×2400, 32 bpp, **1088 pixels per scan line** | Rooted `fb0` output reports `mtkfb`, 32 bpp, virtual size `1088,9600`, and mode `U:1080x2400p-0`. Base address, actual byte pitch, pixel channel order, and lifetime across UEFI handoff still need confirmation. The DSI/panel is not initialized by this GOP driver. |
 | Internal UFS | Register sample at `0x11270000`; optional eight Block I/O placeholders report no media | Probe only. HCS bit 0 is UCRDY, not device presence. No UFS command queue, PHY/link, clock setup, LUN capacity discovery, or storage reads; `ReadBlocks` returns `EFI_NO_MEDIA`. |
 | UART/serial | MT6785 SerialPortLib configures `0x11002000`, MTK mode 3, 115200-8N1 from an assumed 26 MHz clock | Hosted compilation only. UART output, pinmux, clock state, and boot handoff are not hardware-verified. |
-| USB | Generic USB bus, keyboard, and mass-storage class modules are included | They need a USB host-controller driver and board power/role setup, which are absent. |
-| CPU, GIC, timer, reset | Generic Arm drivers and the live-tree MT6785 GIC/core declarations | SMC/PSCI behavior, timer calibration, secondary CPU start, and reset behavior are not tested. |
-| Secure boot / variables | Unsigned bring-up configuration, runtime variable and capsule modules | Secure Boot is disabled in this experimental configuration. Persistent variable storage and capsule update are not validated. |
+| USB | Generic USB bus, keyboard, and mass-storage class modules are included | MT6785 SSUSB/xHCI host driver and role/power setup are absent. USB peripherals are not expected to work yet; this is not a blocker for the current `fastboot boot` smoke test. |
+| CPU, GIC, timer, reset | Generic Arm/GIC code and MT6785 core/PSCI declarations are included | PSCI uses the declared SMC conduit; timer calibration, secondary CPU start, and reset behavior require on-device testing after UEFI starts. |
+| DSI / panel | No native panel driver; GOP uses the framebuffer initialized by LK | Native DSI init is intentionally not part of the first boot path. Verify the LK framebuffer handoff; add a panel driver only if that handoff is unavailable or insufficient. |
+| ACPI / SMBIOS | SMBIOS identity PCDs are configured; firmware volume accepts optional ACPI tables | No SALAA ACPI tables are generated. Current HakiOS path is DeviceTree-first, so ACPI is not a boot gate. SMBIOS runtime publication is not phone-verified. |
+| Capsule / persistent variables | Generic capsule/runtime-variable modules are present in the build | No persistent variable store or authenticated update path is configured. This is deferred and not needed for one-shot RAM boot; do not use capsule update until it is designed and tested. |
 
 **Compatibility statement:** SALAA UEFI source and the HakiOS MT6785/SALAA XNU configuration compile in hosted CI, and a combined v0.7.1 HakiOS/XNU smoke image is published. Optional UFS Block I/O placeholders report no media; `ReadBlocks` returns `EFI_NO_MEDIA` and exposes no usable storage. FD, UART, GOP, HakiOS loader, and XNU execution have not been verified together on SALAA hardware. The v0.7.0 image remains a separate vanilla UEFI diagnostic. The v0.7.1 payload contains only the open `hello` ramdisk, not Apple/Darwin userland, and does not establish hardware compatibility.
 
@@ -143,15 +145,15 @@ The vanilla workflow uses Mu-Silicium commit `4bd8ae83bf37de41777f19e0777db70f59
 | SALAA HakiOS/XNU boot image | ⚠️ | Hosted end-to-end build/package passed in run `41520513335`; complete release `v0.7.1-hakios-xnu.41520513335` and all checksums verified. Phone boot remains untested. |
 | XNU handoff | ⚠️ | HakiOS XNUP created with the pinned MT6785 kernel, matching BootShim/loader and `0xF0000000` reserved window. Container and boot-image bytes verified in hosted CI; actual loader-to-kernel handoff has not been observed on-device. |
 | **UART SerialPortLib** | ⚠️ | EDK II source compiles; `0x11002000`, 115200-8N1 / assumed 26 MHz; physical output not captured |
-| **UFS Block I/O** | ⚠️ | Register probe and no-media placeholders compile; no UFS command/link driver or usable media |
-| USB class stack | ⚠️ | Generic UEFI USB bus/HID/storage class modules present; SoC xHCI host controller driver unported |
-| PSCI / secondary CPU | ⚠️ | Standard Arm PSCI interface used; secondary CPU startup unverified on physical hardware |
-| DSI / panel init | ⚠️ | LK-owned framebuffer handoff utilized; native panel init not required when bootloader initializes display |
-| ACPI / SMBIOS | ⚠️ | SMBIOS strings set for RMX2151/SALAA; ACPI tables not generated (DeviceTree-first boot path) |
-| Capsule update | ❌ | Module present; persistent NVRAM / authenticated variable storage not yet enabled |
-| Hardware boot test | ❌ | Requires a controlled one-shot `fastboot boot` from a separate USB host, known recovery route, and tester logs. No image has been booted on the phone. |
+| **UFS Block I/O** | ⚠️ | Register probe and no-media placeholders compile; PHY/link initialization, LUN discovery, and block transfers are not implemented. |
+| USB class stack | ⚠️ | Generic UEFI USB bus/HID/storage modules present; MT6785 SSUSB/xHCI host controller and board role/power setup are absent. |
+| PSCI / secondary CPU | ⚠️ | SMC PSCI path is declared; CPU start, timer, and reset behavior require phone testing. |
+| GOP / DSI panel | ⚠️ | GOP uses LK's framebuffer; verify its survival, pixel format, and pitch on-device. Native DSI init is conditional, not a first-boot prerequisite. |
+| ACPI / SMBIOS | ⚠️ | SMBIOS identity PCDs are configured; runtime publication is unverified. ACPI is omitted for the current DeviceTree-first path and is not a boot blocker. |
+| Capsule update | ⚠️ | Deferred: no persistent variable backend or authenticated update flow; not required for a RAM boot. |
+| Hardware boot test | ❌ | Next gate: one controlled `fastboot boot` from an external host, known recovery route, and tester logs. No image has been booted on the phone. |
 
-### What has been done (cumulative, 2026-10-26 – 2026-11-01)
+### What has been done (cumulative, 2026-10-26 – 2026-11-02)
 
 1. **Package skeleton** — Mu-Silicium workspace overlay, `SalaaPkg.{dec,dsc,fdf}`, SEC stub, GIC/core PCDs from F.11 DTB.
 2. **Memory map** — 28-descriptor `MemoryMapLib` with XNUP carve-out at `0xF0000000`.
@@ -162,21 +164,27 @@ The vanilla workflow uses Mu-Silicium commit `4bd8ae83bf37de41777f19e0777db70f59
 7. **UFS Block I/O stub** — `MT6785UfsBlockIoDxe` samples controller registers and registers no-media placeholders; no LUN discovery or data transfers.
 8. **Firmware evidence** — F.11 OFP scatter, boot.img v2 and boot-chain files, UART DTS node (GPIO53=RX, GPIO54=TX), UFS DTS node, all documented in `docs/salaa-device-evidence.md`.
 9. **Hosted vanilla release** — current 4 MiB SALAA FD built and released as `v0.6.1-vanilla.fd5785f`; checksum and provenance were validated in Actions.
-10. **One-shot boot-image packer** — SALAA v2 packer and Actions workflow added with pinned tools and hash checks. The matching F.11 input was staged in a draft-only release so the hosted workflow can read it; package verification and phone boot remain pending.
+10. **One-shot boot-image packer** — SALAA v2 packer and Actions workflow use the verified F.11 image from a draft-only release, pinned image tools, matching F.11 ramdisk/DTB, and input hash checks.
+11. **HakiOS/XNU combined image** — hosted workflow compiled the SALAA MT6785 HakiOS XNU kernel, created XNUP with HakiOS's payload builder, combined it with the matching HakiOS FD/BootShim and F.11 Android-v2 wrapper, and published [v0.7.1-hakios-xnu.41520513335](https://github.com/iSciFiLite/rmx2151-salaa-uefi/releases/tag/v0.7.1-hakios-xnu.41520513335). Both jobs passed in [Actions run 41520513335](https://github.com/iSciFiLite/rmx2151-salaa-uefi/actions/runs/41520513335); release checksums verified. It is a `ufs=0 ufs_root=0` smoke payload, not a full Darwin installation or hardware-validated boot.
 
-### What has NOT been done
+### What has NOT been done or verified
 
-- Full UFS host+PHY init (clock enable, UICC link startup, UFSHCIv2 task ring, LUN reads/writes)
-- USB host-controller driver (MT6785 SSUSB / xHCI)
-- PSCI secondary CPU startup verification on hardware
-- DSI / display panel init (bootloader-owned; vendor panel code required)
-- Confirmed `smem_start` framebuffer physical base and byte pitch
-- LK DRAM load address, entry PC/EL, handoff registers
-- SALAA `fastboot boot` attempt and recovery verification on the actual phone
-- Full Darwin/iOS userland image, which requires Apple-provided source files/firmware inputs and a provisioned root path
-- Verified HakiOS XNU runtime on SALAA hardware
+- **UFS:** only register probing/no-media protocol placeholders exist. Clock/PHY setup, link startup, transfer management, LUN discovery, and real reads need implementation. Required for storage-backed OS boot, not this UFS-disabled smoke image.
+- **USB:** no MT6785 SSUSB/xHCI host driver or board role/power setup. Generic class modules alone cannot make USB peripherals work; not required to submit the first fastboot boot request.
+- **PSCI and timer:** interface/configuration exists; SMC calls, secondary CPU start, timer, and reset behavior are untested until firmware runs on the handset.
+- **Display:** actual framebuffer physical base, byte pitch, pixel order, and lifetime across handoff need verification. Native DSI init is only needed if LK's preinitialized framebuffer cannot be used.
+- **LK and memory handoff:** exact load address, entry PC/EL/registers and pre-OS reserved ranges are not confirmed. Android `/proc/iomem` still includes an invalid interval; no address is guessed.
+- **Full Darwin/iOS environment:** absent. The released payload has only the open `hello` ramdisk, disables UFS root, and has no Apple userland or provisioned root volume.
+- **Capsule/security:** persistent variable storage, authenticated update flow, and production Secure Boot policy are deferred; they are not prerequisites for one-shot RAM boot.
+- **Physical validation:** no SALAA `fastboot boot`, UEFI shell observation, XnuLoader/kernel output, UFS read, USB peripheral test, or recovery test has been reported.
 
 “CI green” does not mean “working device feature.”
+
+### Simple priority order
+
+1. Verify release checksums and make one controlled `fastboot boot` attempt from an external host, only with an unlocked bootloader and known recovery route. No partition flashing is required.
+2. Send the complete fastboot host log and screen/result. This determines LK acceptance, UEFI entry, GOP handoff, and whether XnuLoader reaches XNU.
+3. If startup stops before visible output, a tester with UART access can capture serial logs; the owner does not need to open the handset. After entry is established, prioritize UFS if storage-backed HakiOS is desired; add xHCI only if USB peripherals are a requirement. Keep capsule update and ACPI deferred unless a concrete need arises.
 
 ## Change history and procedure log
 
