@@ -12,6 +12,11 @@ its boot arguments contain a device serial number.
 | `salaa-live.dtb` | 227,519 bytes | `0974ca677db2aaf3010b602d37cc123f33860a1d75e9f1fed735178f72e739ec` | Live Android DTB; analyzed locally, not published |
 | `edk2_backup_20261026_183727.tar.gz` | 281,885,686 bytes | `5621aa51e029c58e19092a391d44e64cd6df502bef31cfc7738fb9fe363f1ee5` | Generic `edk2/` tree, not a Mu-Silicium workspace; MD5 `05239c223c43e06bc92ef90eef12b0ed` |
 
+The 2026-11-02 file named `SALAA_F11_mainline_inputs.tar` was identified as a
+ZIP archive by its file signature. Its SHA-256 matches the F.11 ZIP already
+listed above, so it adds no new firmware input. No full OFP extraction was
+performed for this update.
+
 The F.11 manifest identifies RMX2151L1 / RM6785 / MT6785 and firmware
 `RMX2151_11.F.11_3110_202211171630` (Android 12, vendor Linux 4.14.186).
 This is the supplied firmware package identity; the live handset reports a

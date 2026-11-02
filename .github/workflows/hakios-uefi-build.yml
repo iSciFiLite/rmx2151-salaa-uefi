@@ -104,11 +104,11 @@ jobs:
           cp "$fd" "output/SALAA_EFI.hakios-${GITHUB_SHA}.fd"
           cp mu/BootShim/BootShim.bin "output/SALAA_BootShim.hakios-${GITHUB_SHA}.bin"
           cp build-logs/mu-commit.txt build-logs/hakios-uefi-commit.txt build-logs/salaa-commit.txt output/
-          sha256sum output/SALAA_EFI.hakios-${GITHUB_SHA}.fd output/SALAA_BootShim.hakios-${GITHUB_SHA}.bin | tee output/SHA256SUMS
+          (cd output && sha256sum "SALAA_EFI.hakios-${GITHUB_SHA}.fd" "SALAA_BootShim.hakios-${GITHUB_SHA}.bin" > SHA256SUMS)
           cat > output/PROVENANCE.md <<EOF
           # SALAA HakiOS integration build
 
-          - Date: ${GITHUB_RUN_STARTED_AT:-unknown}
+          - Date: $(date -u '+%Y-%m-%dT%H:%M:%SZ')
           - SALAA repository commit: ${GITHUB_SHA}
           - HakiOS UEFI commit: $(cat output/hakios-uefi-commit.txt)
           - Mu-Silicium commit: $(cat output/mu-commit.txt)
