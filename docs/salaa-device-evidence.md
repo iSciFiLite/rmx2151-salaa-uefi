@@ -109,6 +109,27 @@ RMX2151L1. Keep the profile restricted to this observed hardware until the
 regional/model relationship is confirmed; do not assume it covers every
 SALAA/Narzo 20 Pro variant.
 
+### Framebuffer, kernel log, and partition aliases — owner output, 2026-11-02
+
+The owner ran these root Termux queries:
+
+```sh
+su -c 'for f in name bits_per_pixel line_length virtual_size smem_start smem_len format; do printf "%s=" "$f"; cat "/sys/class/graphics/fb0/$f" 2>/dev/null; done; find /sys/class/graphics/fb0 -maxdepth 1 -type f -printf "%f\n" 2>/dev/null | sort'
+su -c 'dmesg 2>/dev/null | grep -Ei "ufshci|ufs phy|ufs|mtkfb|framebuffer|fb0|td4330|nt36672c" | tail -100'
+su -c 'find /dev/block/by-name -maxdepth 1 -type l -printf "%f -> %l\n" 2>/dev/null | grep -Ei "xbl|lk|boot|dtbo|log|ufs"'
+```
+
+Reported results: framebuffer name `mtkfb`, 32 bits per pixel, virtual size
+`1088,9600`; no values were printed for `line_length`, `smem_start`,
+`smem_len`, or `format`. The filtered `dmesg` query printed no matching
+lines. The by-name links shown were `dtbo -> /dev/block/sdc45`,
+`lk2 -> /dev/block/sdc42`, `boot_para -> /dev/block/sdc28`,
+`lk -> /dev/block/sdc41`, `logo -> /dev/block/sdc44`, and
+`boot -> /dev/block/sdc43`. These are observations from the running ROM,
+not proof of the UEFI boot contract, UFS LUN mapping, or permission to write
+those partitions. The combined `printf` output has no newline between fields,
+which explains why empty fields run together in the pasted terminal output.
+
 The supplied `/proc/iomem` exposes these discontiguous System RAM intervals:
 
 ```text
