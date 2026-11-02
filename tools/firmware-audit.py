@@ -89,6 +89,7 @@ if "make -C mu/BootShim" not in hakios_workflow:
 bootimg_workflow = (ROOT / ".github/workflows/salaa-bootimg-build.yml").read_text()
 for marker in (
     "27227c7345e412998ec7394dd37646adc5da8614f71d5653f747840fcdcc57c5",
+    "untagged-3597467fa853612dd205",
     "v0.6.1-vanilla.fd5785f",
     "v0.3.0-hakios.8e6cf0d",
     "fastboot boot SALAA_UEFI_BOOT.img",

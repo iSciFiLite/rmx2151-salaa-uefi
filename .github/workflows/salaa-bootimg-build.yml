@@ -2,11 +2,6 @@ name: SALAA one-shot UEFI boot image
 
 on:
   workflow_dispatch:
-    inputs:
-      stock_boot_url:
-        description: Temporary direct HTTPS URL to the verified 32 MiB F.11 boot.img
-        required: true
-        type: string
 
 permissions:
   contents: write
@@ -24,14 +19,15 @@ jobs:
         with:
           python-version: '3.x'
 
-      - name: Download the owner-supplied F.11 boot image
+      - name: Download and verify the draft-only F.11 boot input
         env:
-          STOCK_BOOT_URL: ${{ inputs.stock_boot_url }}
+          GH_TOKEN: ${{ github.token }}
         run: |
           set -euo pipefail
           mkdir -p input output
-          curl --fail --location --retry 3 --max-filesize 33554432 \
-            "$STOCK_BOOT_URL" --output input/stock-boot.img
+          gh release download untagged-3597467fa853612dd205 \
+            --repo "$GITHUB_REPOSITORY" --pattern boot.img --dir input
+          mv input/boot.img input/stock-boot.img
           test "$(stat -c %s input/stock-boot.img)" = 33554432
           echo '27227c7345e412998ec7394dd37646adc5da8614f71d5653f747840fcdcc57c5  input/stock-boot.img' | sha256sum -c -
 

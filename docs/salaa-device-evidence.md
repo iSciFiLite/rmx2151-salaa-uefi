@@ -62,18 +62,18 @@ build configuration; it does not verify the absent F.11 image or current
 phone boot partition.
 
 The existing UEFI FD and BootShim are not themselves an Android boot image.
-The upstream HakiOS `mkxnuimg.py` packages a Redwood-specific FD at
-`0x9FD00000` (2 MiB) with Android header v1; that recipe is not reusable for
-SALAA's 4 MiB FD and v2 boot header. A SALAA-specific packer and
-`SALAA one-shot UEFI boot image` GitHub Actions workflow now preserve the F.11
-header/ramdisk/DTB, replace its kernel with the gzip-compressed BootShim + FD,
-and verify the output. The workflow uses pinned, hash-checked AOSP and
-Mu-Silicium image tools and validates that the stock F.11 boot image matches
-its documented SHA-256. It has not run because the stock image is only on the
-Ubuntu data volume and GitHub Actions cannot read local files. Provide a
-temporary direct HTTPS URL to the 32 MiB `boot.img`; do not upload the full
-OFP. The generated image is a temporary `fastboot boot` test, not a
-`fastboot flash boot` image. LK modification is neither required nor planned.
+HakiOS's upstream `mkxnuimg.py` describes the fastboot kernel payload as
+`gzip(BootShim + UEFI FD + optional XNUP) + DTB` and calls `fastboot boot`;
+its checked-in defaults target Redwood (2 MiB FD at `0x9FD00000`, Android
+header v1), so those device values cannot be reused for SALAA. The SALAA
+packer preserves the matching F.11 Android v2 wrapper, ramdisk, and separate
+DTB, replacing only the kernel with `gzip(BootShim + 4 MiB vanilla SALAA FD)`.
+This is the UEFI-entry image only: it contains no XNUP/XNU payload. The F.11
+input is held in a draft-only GitHub release asset and is downloaded by
+Actions with the repository token; it is not in Git or a public release. The
+hosted packer has not yet completed. Its eventual output is for `fastboot
+boot`, not a flashable `boot` partition image. LK modification is neither
+required nor planned.
 
 ## Current handset evidence
 
