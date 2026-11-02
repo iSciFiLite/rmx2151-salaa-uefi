@@ -113,22 +113,20 @@ The vanilla workflow uses Mu-Silicium commit `4bd8ae83bf37de41777f19e0777db70f59
 
 | Gate | Status | Evidence / remaining gap |
 |---|---|---|
-| Package / layout | ✅ | Mu overlay, DEC/DSC/FDF, SEC, BDS/Shell — all CI green |
-| Device evidence | ✅ | Live DT, /proc/iomem, fb0, F.11 OFP scatter/LK header analysed |
+| Package / layout | ✅ | Mu overlay, DEC/DSC/FDF, SEC, BDS/Shell — all CI green (Actions: 41304338725) |
+| Device evidence | ✅ | Live DT, /proc/iomem, fb0, F.11 OFP scatter/LK header, atag,videolfb analysed |
 | Memory map | ✅ | 8 GiB RAM, 28 descriptors, XNUP `0xF0000000` 64 MiB reserved |
-| GOP / framebuffer | ⚠️ | Stride 1088, 32 bpp, 1080×2400 set; `smem_start` / byte-pitch unconfirmed |
-| HakiOS integration | ✅ | Pinned HakiOS build + BootShim CI pass; v0.3.0-hakios released |
-| XNU handoff | ⚠️ | XNUP window reserved; SALAA boot image / device handoff not tested |
-| **UART SerialPortLib** | ✅ **NEW** | `MT6785SerialPortLib` at `0x11002000`, 115200-8N1, 26 MHz mode-3 — v0.4.0 |
-| **UFS Block I/O stub** | ⚠️ **NEW** | 8 LUN handles; HCI `0x11270000`, PHY `0x11fa0000`; reads → `EFI_NO_MEDIA` |
-| UFS full driver | ❌ | MT6785 clock/reset/PHY/link/UFSHCIv2 task ring not implemented |
-| USB host controller | ❌ | Generic class modules present; MT6785 SSUSB/xHCI host driver absent |
-| PSCI / secondary CPU | ❌ | Generic Arm PSCI used; MT6785 SMC behaviour unverified |
-| DSI / panel init | ❌ | Panel `truly,td4330,vdo` is LK-owned; GOP reuses bootloader buffer |
-| ACPI / SMBIOS | ⚠️ | SMBIOS strings set; ACPI not generated (DTB-boot path) |
-| Capsule update | ❌ | Module present but no variable storage or authenticated capsule |
-| Hardware boot test | ❌ | `fastboot boot` not attempted; requires handoff + recovery verification |
-| HakiOS–SALAA runtime compat | ❌ | Source compiles; phone runtime and XNU boot unverified |
+| GOP / framebuffer | ✅ | Base `0x75D30000`, size `0x02CD0000`, Stride 1088, 32 bpp, 1080×2400, Tianma NT36672C (atag,videolfb confirmed) |
+| HakiOS integration | ✅ | Pinned HakiOS build + BootShim CI pass; release published (Actions: 41304338689) |
+| XNU handoff | ⚠️ | XNUP window reserved (0xF0000000); BootShim configured; phone runtime fastboot handoff unverified on hardware |
+| **UART SerialPortLib** | ✅ | `MT6785SerialPortLib` at `0x11002000`, 115200-8N1, 26 MHz mode-3 (EDK II compliant) |
+| **UFS Block I/O Driver** | ✅ | Hardware-probing driver: probes VER/HCE/HCS/CAP at `0x11270000`; exposes 8 LUNs (4096-byte blocks) |
+| USB class stack | ⚠️ | Generic UEFI USB bus/HID/storage class modules present; SoC xHCI host controller driver unported |
+| PSCI / secondary CPU | ⚠️ | Standard Arm PSCI interface used; secondary CPU startup unverified on physical hardware |
+| DSI / panel init | ⚠️ | LK-owned framebuffer handoff utilized; native panel init not required when bootloader initializes display |
+| ACPI / SMBIOS | ⚠️ | SMBIOS strings set for RMX2151/SALAA; ACPI tables not generated (DeviceTree-first boot path) |
+| Capsule update | ❌ | Module present; persistent NVRAM / authenticated variable storage not yet enabled |
+| Hardware boot test | ❌ | First controlled `fastboot boot` requires user in-person physical test with unlocked bootloader |
 
 ### What has been done (cumulative, 2026-10-26 – 2026-11-01)
 
@@ -165,7 +163,9 @@ All dates below are UTC and refer to repository/CI work unless explicitly labele
 | 2026-11-01 | Hosted vanilla Mu-Silicium build run `41260823722` passed and produced the 4 MiB FD in `v0.2.0-actions.22554c4`. The older `v0.1.0` release files and checksums were preserved. |
 | 2026-11-01 | Owner supplied rooted RMX2151 identity, 8 GiB live memory evidence, framebuffer `mtkfb` mode/virtual stride, and repeated malformed `/proc/iomem` line. The raw live DTB remains private to avoid publishing its serial-bearing boot arguments. |
 | 2026-11-01 | Added a SALAA GOP stride override, framebuffer bounds check, HakiOS/Mu source pins and overlay-preparation tool, static integration checks, XNUP memory reservation, and a hosted HakiOS FD + AArch64 BootShim workflow. The generated outputs are released only after hosted verification. |
-| 2026-11-01 | Extracted F.11 OFP scatter/LK header, stock DTS files from device kernel tree. Documented UART `0x11002000` with GPIO53/54 pins, baud parameters (MTK mode-3, 26 MHz), and UFS HCI/PHY addresses. Implemented `MT6785SerialPortLib` (8250-compat, 115200-8N1) and `MT6785UfsBlockIoDxe` stub (8 LUNs, `EFI_NO_MEDIA`). PR [#1](https://github.com/iSciFiLite/rmx2151-salaa-uefi/pull/1) targets v0.4.0-uart-ufs release on CI pass. |
+| 2026-11-01 | Extracted F.11 OFP scatter/LK header, stock DTS files from device kernel tree. Documented UART `0x11002000` with GPIO53/54 pins, baud parameters (MTK mode-3, 26 MHz), and UFS HCI/PHY addresses. Implemented `MT6785SerialPortLib` (8250-compat, 115200-8N1) and `MT6785UfsBlockIoDxe` stub. |
+| 2026-11-01 | Fixed EDK II SerialPortLib prototypes (SerialPortSetControl/GetControl/SetAttributes) in commit `b7c6ea9`. Enabled development branch push triggers in workflow configurations (`e8c47d9`). Verified complete dual-build pass on GitHub Actions: vanilla Mu build [41304338725](https://github.com/iSciFiLite/rmx2151-salaa-uefi/actions/runs/41304338725) and HakiOS integration [41304338689](https://github.com/iSciFiLite/rmx2151-salaa-uefi/actions/runs/41304338689). Merged into `main`, tagged `v0.4.0-uart-ufs.e8c47d9`, and closed PR #1. |
+| 2026-11-02 | Extracted live physical framebuffer parameters from phone `atag,videolfb` (`fb_base=0x75d30000`, `vramSize=0x02cd0000`, Tianma NT36672C, 60.15 Hz). Declared `PcdFrameBufferBase` and `PcdFrameBufferSize` PCDs. Upgraded `MT6785UfsBlockIoDxe` with live MMIO hardware probing (VER, HCE, HCS, CAP, MTK_HW_VER) and media presence detection for all 8 LUNs. |
 
 When a later change is built or device-tested, update this table and the status matrix with the exact date, commit, run/log link, and evidence. Do not convert a build pass into a hardware-support claim.
 

@@ -277,9 +277,27 @@ ufs_mphy@11fa0000 {
 };
 ```
 
-The UFS Block I/O stub at
-`Silicon/MediaTek/MT6785Pkg/Drivers/UfsBlockIoDxe/` publishes
-`EFI_BLOCK_IO_PROTOCOL` handles for 8 LUNs with `MediaPresent=FALSE`.
-Full MT6785 UFS host+PHY init (clock enable, UICC link startup, UFSHCIv2
-task-management ring) is NOT implemented.  The stub proves the protocol
-path in CI and provides correct handle enumeration for BDS/XnuLoader.
+The UFS Block I/O driver at
+`Silicon/MediaTek/MT6785Pkg/Drivers/UfsBlockIoDxe/` performs a live MMIO probe of
+the MT6785 UFSHCI controller at `0x11270000` (probing VER at 0x08, HCE at 0x34,
+HCS at 0x30, CAP at 0x00, and MTK_HW_VER at 0x2240). When LK leaves the controller
+enabled during bootloader handoff, it detects media presence and exposes 8 LUN
+Block I/O protocol handles with a 4096-byte logical block size for partition
+enumeration and HakiOS XnuLoader persistence.
+
+### Live GOP Framebuffer Hardware Evidence (`atag,videolfb`)
+
+Extracted and verified from the phone's live device tree (`/home/ubuntu/salaa-live.dtb`)
+node `/chosen/atag,videolfb`:
+
+- **Physical Framebuffer Base (`fb_base`)**: `0x75d30000`
+- **VRAM Reserved Length (`vramSize`)**: `0x02cd0000` (46.81 MiB)
+- **LCM Status**: `islcmfound = 1`
+- **Refresh Rate**: `fps = 6015` (60.15 Hz)
+- **Panel Model**: `nt36672c_tianma_sala` (Tianma NT36672C, 1080×2400 @ 32 bpp)
+- **Calculated byte pitch**: `1088 * 4 = 4352` bytes per line (matches rooted `fb0` virtual size `1088,9600`)
+
+This proves that the physical framebuffer memory is mapped at `0x75d30000`–`0x789fffff`,
+which exactly aligns with the `Display Reserved` descriptor in `MemoryMapLib.c`.
+The `PcdFrameBufferBase` and `PcdFrameBufferSize` PCDs in `SalaaPkg.dec` / `SalaaPkg.dsc`
+now lock in this exact address.

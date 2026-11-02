@@ -43,6 +43,9 @@
   gSiliciumPkgTokenSpaceGuid.PcdFrameBufferColorDepth|32
   # Rooted SALAA fb0 reports virtual_size=1088,9600 for 1080x2400 at 32 bpp.
   gSalaaPkgTokenSpaceGuid.PcdFrameBufferPixelsPerScanLine|1088
+  # Live DT atag,videolfb: fb_base=0x75d30000, vramSize=0x02cd0000
+  gSalaaPkgTokenSpaceGuid.PcdFrameBufferBase|0x75D30000
+  gSalaaPkgTokenSpaceGuid.PcdFrameBufferSize|0x02CD0000
   # Serial SimpleTextInOut must connect without a user-created boot option.
   gEfiMdeModulePkgTokenSpaceGuid.PcdConInConnectOnDemand|FALSE
   gEfiMdePkgTokenSpaceGuid.PcdPlatformBootTimeOut|0

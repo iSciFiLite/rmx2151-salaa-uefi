@@ -13,3 +13,6 @@
 
 [PcdsFixedAtBuild]
   gSalaaPkgTokenSpaceGuid.PcdFrameBufferPixelsPerScanLine|1088|UINT32|0x00000001
+  # Live hardware DT (atag,videolfb) confirmed physical base and allocation
+  gSalaaPkgTokenSpaceGuid.PcdFrameBufferBase|0x75D30000|UINT64|0x00000002
+  gSalaaPkgTokenSpaceGuid.PcdFrameBufferSize|0x02CD0000|UINT32|0x00000003

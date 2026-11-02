@@ -30,6 +30,7 @@
   DebugLib
   BaseMemoryLib
   MemoryAllocationLib
+  IoLib
 
 [Protocols]
   gEfiBlockIoProtocolGuid                 ## PRODUCES
