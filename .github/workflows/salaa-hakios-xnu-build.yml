@@ -29,7 +29,7 @@ jobs:
           set -euo pipefail
           sudo apt-get update
           sudo apt-get install --yes autoconf automake bison build-essential clang curl flex git lld m4 make perl python3 xz-utils
-          bash -c "\$(curl -fsSL https://raw.githubusercontent.com/theos/theos/6e7b8c40e0f5f9f5b2377800dc1e42cd2560d24a/bin/install-theos)"
+          bash -c "$(curl -fsSL https://raw.githubusercontent.com/theos/theos/6e7b8c40e0f5f9f5b2377800dc1e42cd2560d24a/bin/install-theos)"
           if [ ! -d "$HOME/theos/sdks/iPhoneOS16.5.sdk" ]; then
             git init "$HOME/theos/sdks-git"
             git -C "$HOME/theos/sdks-git" remote add origin https://github.com/theos/sdks.git
