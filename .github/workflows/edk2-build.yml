@@ -66,9 +66,22 @@ jobs:
           test -n "$fd"
           python3 salaa-port/tools/verify-uefi-fd.py "$fd" | tee output/verification.json
           cp "$fd" output/SALAA_EFI.actions-${GITHUB_SHA}.fd
-          sha256sum output/SALAA_EFI.actions-${GITHUB_SHA}.fd | tee output/SHA256SUMS
+          (cd output && sha256sum "SALAA_EFI.actions-${GITHUB_SHA}.fd" > SHA256SUMS)
           cp build-logs/mu-commit.txt build-logs/salaa-commit.txt output/
           cp build-logs/build.log output/
+          cat > output/PROVENANCE.md <<EOF
+          # SALAA vanilla UEFI build provenance
+
+          - Date: $(date -u '+%Y-%m-%dT%H:%M:%SZ')
+          - SALAA source commit: ${GITHUB_SHA}
+          - Mu-Silicium commit: $(cat output/mu-commit.txt)
+          - Build: hosted GitHub Actions, Mu-Silicium EDK II DEBUG
+          - FD base/size: 0x40000000 / 0x00400000
+          - Checks: memory-map audit, PI firmware-volume signature and length
+          - Device boot/runtime: not tested
+          - UFS: safe no-media stub; not a storage driver
+          - Android boot image: not produced by this workflow
+          EOF
 
       - name: Upload firmware artifact
         if: success()

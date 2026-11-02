@@ -24,18 +24,34 @@ The F.11 manifest identifies RMX2151L1 / RM6785 / MT6785 and firmware
 This is the supplied firmware package identity; the live handset reports a
 different build fingerprint below.
 
-### Stock boot-image metadata and missing binaries — 2026-11-02
+### Selective F.11 boot-chain inspection — 2026-11-02
 
-The supplied F.11 manifest reports an Android boot image v2, 2048-byte page
-size, 33,554,432-byte stock `boot.img`, kernel load address `0x40080000`,
-ramdisk address `0x47c80000`, and tags/DTB address `0x4bc80000`. It records
-DTB size 141,677 bytes and boot-image SHA-256
-`27227c7345e412998ec7394dd37646adc5da8614f71d5653f747840fcdcc57c5`.
-These are manifest claims only: the image bytes were not attached, so size,
-hash, header, ramdisk, and load fields have not been checked against the
-binary or the currently running phone. The manifest's boot DTB is separate
-from the supplied live DTB, and neither LK binary nor a bootloader handoff log
-was provided.
+The Ubuntu data volume contains the 10,546,675,416-byte
+`RMX2151_F11.ofp` and an existing `selected_f11/` extraction. This turn did
+not decrypt or extract the whole OFP. We inspected the already-extracted
+boot-chain files only. The 33,554,432-byte `boot.img` SHA-256 is
+`27227c7345e412998ec7394dd37646adc5da8614f71d5653f747840fcdcc57c5`, exactly
+matching the supplied manifest. AOSP `unpack_bootimg.py` from
+`platform/system/tools/mkbootimg` commit
+`d2bb0af5ba6d3198a3e99529c97eda1be0b5a093` (script SHA-256
+`a9d260978a63bd06a24b6347e7dee8a28ff96639793caea15dff6aa491316308`) parsed
+the actual binary as Android boot header v2, page size 2048, kernel size
+15,662,146 at `0x40080000`, ramdisk size 1,434,484 at `0x47c80000`, and DTB
+size 141,677 at `0x4bc80000`; the command line is
+`bootopt=64S3,32N2,64N2 buildvariant=user`. The extracted `dtb`, `kernel`, and
+`ramdisk` hashes are respectively
+`ddcb4f21c19f203b36547b5f0e5663399361f954fb884114c39c775db68b9ccc`,
+`c3ebf513d0ab3e29d5ac9a3fc17b486a85fe6a4510307395ee6d734b20d1fb89`, and
+`2f8306faaf3c73851b31fe9c6e71c4cb6fb290f316165bbb91a6a48a4a5d5ba4`.
+
+The same extraction has `lk.img` and `lk2.img` (each 1,387,824 bytes, equal
+SHA-256 `d532ce63f1fefb02b39a5f32048d7d2b67af5cc17d7b8d4424beed6b4cf58ca0`),
+plus the 375,120-byte preloader. These boot-chain binaries are not committed
+or released. The LK images are not needed to assemble a temporary Android
+boot image and must not be patched or flashed as part of this effort. The
+running phone is now on a custom Android 16 QPR2 ROM; these F.11 files are
+stock-package references, not proof that its current `boot` partition is
+identical.
 
 As a cross-check, the supplied device-tree repository's public
 [`lineage-23.2/BoardConfig.mk`](https://github.com/elohim-etz/android_device_realme_RM6785/blob/lineage-23.2/BoardConfig.mk)
@@ -50,11 +66,14 @@ The upstream HakiOS `mkxnuimg.py` packages a Redwood-specific FD at
 `0x9FD00000` (2 MiB) with Android header v1; that recipe is not reusable for
 SALAA's 4 MiB FD and reported v2 boot header. A first SALAA test should be a
 temporary `fastboot boot` image, not a `fastboot flash boot` operation. A
-working recipe still needs the exact current phone boot image (or its
-verified header, ramdisk, and DTB components), a SALAA-adjusted packer, and an
-in-person test with a known recovery route. The LK binary is not needed to
-construct a temporary image; it or a serial handoff log is needed only to
-prove bootloader load/entry behavior independently of the device test.
+working recipe needs to make the inspected stock boot files available to a
+hosted runner, a SALAA-adjusted packer that preserves its header/ramdisk/DTB,
+and an in-person test with a known recovery route. The boot files are presently
+available only on the Ubuntu data volume, which a GitHub Actions runner cannot
+read; they were not put in this repository because they are proprietary phone
+firmware. A one-shot `fastboot boot` test is the first device check; do not
+flash the generated image. The LK binary or a serial log would help analyze
+LK entry behavior, but is not required to package the temporary boot image.
 
 ## Current handset evidence
 
