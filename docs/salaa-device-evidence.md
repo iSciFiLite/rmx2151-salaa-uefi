@@ -57,9 +57,9 @@ As a cross-check, the supplied device-tree repository's public
 [`lineage-23.2/BoardConfig.mk`](https://github.com/elohim-etz/android_device_realme_RM6785/blob/lineage-23.2/BoardConfig.mk)
 sets header v2, 2048-byte pages, kernel base `0x40078000` plus offset
 `0x8000` (effective `0x40080000`), ramdisk offset `0x07c08000`, and DTB/tags
-offset `0x0bc08000`. This corroborates the manifest's layout for that Android
-build configuration; it does not verify the absent F.11 image or current
-phone boot partition.
+offset `0x0bc08000`. This corroborates the parsed F.11 header layout for that
+Android build configuration; it does not verify that the phone's current
+custom-ROM boot partition is identical.
 
 The existing UEFI FD and BootShim are not themselves an Android boot image.
 HakiOS's upstream `mkxnuimg.py` describes the fastboot kernel payload as
@@ -68,12 +68,19 @@ its checked-in defaults target Redwood (2 MiB FD at `0x9FD00000`, Android
 header v1), so those device values cannot be reused for SALAA. The SALAA
 packer preserves the matching F.11 Android v2 wrapper, ramdisk, and separate
 DTB, replacing only the kernel with `gzip(BootShim + 4 MiB vanilla SALAA FD)`.
-This is the UEFI-entry image only: it contains no XNUP/XNU payload. The F.11
-input is held in a draft-only GitHub release asset and is downloaded by
-Actions with the repository token; it is not in Git or a public release. The
-hosted packer has not yet completed. Its eventual output is for `fastboot
-boot`, not a flashable `boot` partition image. LK modification is neither
-required nor planned.
+The hosted UEFI-entry output is published at
+[`v0.7.0-bootimg.41512150665`](https://github.com/iSciFiLite/rmx2151-salaa-uefi/releases/tag/v0.7.0-bootimg.41512150665)
+(1,951,744 bytes; SHA-256
+`59a416bb6e99884ee1401f0cd20d3e5440bfc31a6e8fcc72eef169a4241b75d3`). It
+contains no XNUP/XNU payload and uses the vanilla FD; it is a diagnostic, not
+the intended HakiOS/XNU image. The F.11 input is held in a draft-only GitHub
+release asset and downloaded by Actions with the repository token; it is not
+in Git or a public input release. A separate hosted workflow now builds the
+pinned MT6785 SALAA XNU kernel and open `hello` ramdisk, packages them as XNUP,
+and combines that with the matching HakiOS SALAA FD + BootShim. That workflow
+has not yet completed. Either image is for `fastboot boot` testing only, not a
+flashable `boot` partition image. LK modification is neither required nor
+planned.
 
 ## Current handset evidence
 

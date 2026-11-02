@@ -64,6 +64,7 @@ required_files = (
     "integrations/hakios/lock.env",
     ".github/workflows/hakios-uefi-build.yml",
     ".github/workflows/salaa-bootimg-build.yml",
+    ".github/workflows/salaa-hakios-xnu-build.yml",
     "tools/pack-salaa-bootimg.py",
 )
 for relative in required_files:
@@ -96,6 +97,18 @@ for marker in (
 ):
     if marker not in bootimg_workflow:
         raise SystemExit(f"The SALAA boot-image workflow is missing verified setting: {marker}")
+
+xnu_workflow = (ROOT / ".github/workflows/salaa-hakios-xnu-build.yml").read_text()
+for marker in (
+    "iSciFiLite/hakios-mt6785",
+    "f50d914",
+    "kernel=hakios-kernel ramdisk=userland/hello",
+    "SALAA_XNUP.bin",
+    "v0.3.0-hakios.8e6cf0d",
+    "fastboot boot",
+):
+    if marker not in xnu_workflow:
+        raise SystemExit(f"The SALAA HakiOS/XNU workflow is missing required input or safety marker: {marker}")
 
 memory_audit = subprocess.run(
     ["python3", str(ROOT / "tools/audit-memory-map.py")],

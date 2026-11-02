@@ -1,0 +1,173 @@
+name: SALAA HakiOS XNU fastboot image
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  build-salaa-xnup:
+    runs-on: macos-15
+    timeout-minutes: 120
+    steps:
+      - name: Checkout SALAA UEFI packer
+        uses: actions/checkout@v4
+        with:
+          path: salaa-uefi
+
+      - name: Checkout pinned MT6785 HakiOS/XNU source
+        uses: actions/checkout@v4
+        with:
+          repository: iSciFiLite/hakios-mt6785
+          ref: f50d914084733cb9d302beaf39fa824a8d2fe41f
+          path: hakios-mt6785
+          fetch-depth: 1
+
+      - name: Build SALAA MT6785 XNU kernel and open hello ramdisk
+        run: |
+          set -euo pipefail
+          cd hakios-mt6785
+          git rev-parse HEAD | tee ../xnu-source-commit.txt
+          make DEVICE=salaa salaa_defconfig
+          xnu/apply.sh
+          xnu-deps/setup.sh --stage1
+          xnu-deps/setup.sh --stage2
+          make DEVICE=salaa JOBS=3 kernel
+          make DEVICE=salaa hello
+          mkdir -p ../xnu-output
+          cp hakios-kernel userland/hello ../xnu-output/
+          kernel_version="$(python3 tools/kernel-version.py)"
+          python3 xnuloader/mkpayload.py \
+            --kernel-version "$kernel_version" \
+            --cmdline 'cpus=7 bootcpu=7 ufs=0 ufs_root=0' \
+            -o ../xnu-output/SALAA_XNUP.bin \
+            kernel=hakios-kernel ramdisk=userland/hello
+          cp ../xnu-source-commit.txt ../xnu-output/
+          cat > ../xnu-output/XNU-PROVENANCE.md <<EOF
+          # SALAA MT6785 HakiOS XNU smoke payload
+
+          - HakiOS MT6785 source commit: $(cat ../xnu-source-commit.txt)
+          - Device configuration: SALAA / MT6785
+          - Payload: XNUP containing the compiled XNU kernel and the project's open hello ramdisk
+          - Command line: cpus=7 bootcpu=7 ufs=0 ufs_root=0
+          - Darwin/iOS userland and Apple IPSW content: not included
+          - Phone boot and runtime: not tested
+          EOF
+          (cd ../xnu-output && shasum -a 256 hakios-kernel hello SALAA_XNUP.bin > SHA256SUMS)
+          shasum -a 256 ../xnu-output/SALAA_XNUP.bin
+
+      - name: Upload compiled SALAA kernel and XNUP payload
+        uses: actions/upload-artifact@v4
+        with:
+          name: SALAA-MT6785-XNU-${{ github.sha }}
+          path: xnu-output/*
+          if-no-files-found: error
+          retention-days: 30
+
+  package-fastboot-image:
+    needs: build-salaa-xnup
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    steps:
+      - name: Checkout SALAA UEFI packer
+        uses: actions/checkout@v4
+
+      - name: Download compiled SALAA XNUP
+        uses: actions/download-artifact@v4
+        with:
+          name: SALAA-MT6785-XNU-${{ github.sha }}
+          path: input/xnup
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.x'
+
+      - name: Download and verify draft-only SALAA inputs
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          mkdir -p input output
+          gh release download untagged-3597467fa853612dd205 \
+            --repo "$GITHUB_REPOSITORY" --pattern boot.img --dir input
+          mv input/boot.img input/stock-boot.img
+          test "$(stat -c %s input/stock-boot.img)" = 33554432
+          echo '27227c7345e412998ec7394dd37646adc5da8614f71d5653f747840fcdcc57c5  input/stock-boot.img' | sha256sum -c -
+          gh release download v0.3.0-hakios.8e6cf0d \
+            --repo "$GITHUB_REPOSITORY" --pattern 'SALAA_EFI.hakios-8e6cf0d626927d9456f81be257bc2c1db92afea8.fd' --dir input
+          gh release download v0.3.0-hakios.8e6cf0d \
+            --repo "$GITHUB_REPOSITORY" --pattern 'SALAA_BootShim.hakios-8e6cf0d626927d9456f81be257bc2c1db92afea8.bin' --dir input
+          echo 'f21da9573fe9fdb57f8de75e31f82537f8f022b5be161d3af05ae3379cc9a7bb  input/SALAA_EFI.hakios-8e6cf0d626927d9456f81be257bc2c1db92afea8.fd' | sha256sum -c -
+          echo '6b72283e965a942d197d6721cdb7ebed43bbe17b6f45a371d93b97753ab1ef85  input/SALAA_BootShim.hakios-8e6cf0d626927d9456f81be257bc2c1db92afea8.bin' | sha256sum -c -
+
+      - name: Fetch pinned Android boot-image tools
+        run: |
+          set -euo pipefail
+          curl --fail --location \
+            'https://android.googlesource.com/platform/system/tools/mkbootimg/+/d2bb0af5ba6d3198a3e99529c97eda1be0b5a093/unpack_bootimg.py?format=TEXT' \
+            | base64 -d > input/unpack_bootimg.py
+          echo 'a9d260978a63bd06a24b6347e7dee8a28ff96639793caea15dff6aa491316308  input/unpack_bootimg.py' | sha256sum -c -
+          curl --fail --location \
+            'https://raw.githubusercontent.com/Project-Silicium/Mu-Silicium/4bd8ae83bf37de41777f19e0777db70f59383a6d/Resources/Scripts/mkbootimg.py' \
+            --output input/mkbootimg.py
+          echo '55037fd1a6d6cd861add76c2083d5d4321373bf714acae3f6a40deb004c27d47  input/mkbootimg.py' | sha256sum -c -
+
+      - name: Assemble and verify SALAA HakiOS XNU boot image
+        run: |
+          set -euo pipefail
+          python3 tools/pack-salaa-bootimg.py \
+            --stock-boot input/stock-boot.img \
+            --fd input/SALAA_EFI.hakios-8e6cf0d626927d9456f81be257bc2c1db92afea8.fd \
+            --shim input/SALAA_BootShim.hakios-8e6cf0d626927d9456f81be257bc2c1db92afea8.bin \
+            --xnup input/xnup/SALAA_XNUP.bin \
+            --fd-sha256 f21da9573fe9fdb57f8de75e31f82537f8f022b5be161d3af05ae3379cc9a7bb \
+            --shim-sha256 6b72283e965a942d197d6721cdb7ebed43bbe17b6f45a371d93b97753ab1ef85 \
+            --unpack-bootimg input/unpack_bootimg.py \
+            --mkbootimg input/mkbootimg.py \
+            --out-dir output \
+            --source-commit "$GITHUB_SHA" \
+            --xnu-source-commit "$(cat input/xnup/xnu-source-commit.txt)" \
+            --fd-release v0.3.0-hakios.8e6cf0d \
+            --image-name SALAA_HAKIOS_XNU_BOOT.img
+          cp input/xnup/SALAA_XNUP.bin input/xnup/hakios-kernel input/xnup/hello input/xnup/XNU-PROVENANCE.md output/
+          (cd output && sha256sum SALAA_HAKIOS_XNU_BOOT.img SALAA_XNUP.bin hakios-kernel hello > SHA256SUMS)
+          (cd output && sha256sum -c SHA256SUMS)
+
+      - name: Upload SALAA HakiOS XNU image and payload artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: SALAA-HakiOS-XNU-BOOT-${{ github.sha }}
+          path: output/*
+          if-no-files-found: error
+          retention-days: 30
+
+      - name: Publish SALAA HakiOS XNU smoke-test prerelease
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          tag="v0.7.1-hakios-xnu.${GITHUB_RUN_ID}"
+          cat > output/release-notes.md <<EOF
+          Hosted SALAA/MT6785 HakiOS XNU smoke-test boot image.
+
+          This contains the HakiOS-patched SALAA UEFI FD, its matching BootShim, and an XNUP payload built from the pinned MT6785 XNU source with the open hello ramdisk. It does not include Apple's Darwin/iOS userland. The image has not been booted on the phone. Use fastboot boot only; do not flash it or either LK partition.
+
+          SALAA source: ${GITHUB_SHA}
+          XNU source: $(cat input/xnup/xnu-source-commit.txt)
+          EOF
+          gh release create "$tag" \
+            --repo "$GITHUB_REPOSITORY" \
+            --title "SALAA HakiOS XNU smoke image run ${GITHUB_RUN_ID}" \
+            --notes-file output/release-notes.md \
+            --prerelease \
+            --target "$GITHUB_SHA" \
+            output/SALAA_HAKIOS_XNU_BOOT.img \
+            output/SALAA_XNUP.bin \
+            output/hakios-kernel \
+            output/hello \
+            output/SHA256SUMS \
+            output/verification.json \
+            output/PROVENANCE.md \
+            output/XNU-PROVENANCE.md
