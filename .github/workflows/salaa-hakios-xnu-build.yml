@@ -51,7 +51,10 @@ jobs:
           make DEVICE=salaa salaa_defconfig
           xnu/apply.sh
           xnu-deps/setup.sh --stage1
-          xnu-deps/setup.sh --stage2
+          if ! xnu-deps/setup.sh --stage2; then
+            cat xnu-deps/exporthdrs.log || true
+            exit 1
+          fi
           make DEVICE=salaa JOBS=3 kernel
           make DEVICE=salaa hello
           mkdir -p ../xnu-output
