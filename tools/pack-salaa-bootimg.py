@@ -171,7 +171,7 @@ def main() -> int:
             f"- Contents: BootShim + SALAA FD + {'XNUP payload + ' if xnup else ''}matching stock F.11 ramdisk and DTB\n"
             f"- XNU source commit: `{args.xnu_source_commit or 'not applicable (UEFI-entry image)'}`\n"
             "- Checks: stock input hash/header, output header/load parameters, exact shim/FD payload, ramdisk/DTB identity, image size\n"
-            "- Start with `fastboot boot SALAA_UEFI_BOOT.img`; do not flash this image\n"
+            f"- Start with `fastboot boot {output.name}`; do not flash this image\n"
             "- This is a fastboot RAM-boot candidate, not a flashable partition image\n"
             "- Phone boot and recovery: not tested\n"
         )

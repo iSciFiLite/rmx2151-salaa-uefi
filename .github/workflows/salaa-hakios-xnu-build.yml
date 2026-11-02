@@ -28,8 +28,15 @@ jobs:
         run: |
           set -euo pipefail
           sudo apt-get update
-          sudo apt-get install --yes autoconf automake bison build-essential clang curl flex git lld m4 make perl python3 uuid-dev xz-utils
-          bash -c "$(curl -fsSL https://raw.githubusercontent.com/theos/theos/6e7b8c40e0f5f9f5b2377800dc1e42cd2560d24a/bin/install-theos)"
+          sudo apt-get install --yes autoconf automake bison build-essential clang curl flex git libtinfo6 lld m4 make perl python3 uuid-dev xz-utils
+          mkdir -p "$HOME/theos/toolchain"
+          curl --fail --location --retry 3 \
+            'https://github.com/L1ghtmann/llvm-project/releases/download/test-210562a/iOSToolchain-x86_64.tar.xz' \
+            --output "$RUNNER_TEMP/iOSToolchain-x86_64.tar.xz"
+          test "$(stat -c %s "$RUNNER_TEMP/iOSToolchain-x86_64.tar.xz")" = 86163280
+          sha256sum "$RUNNER_TEMP/iOSToolchain-x86_64.tar.xz" | awk '{print $1}' > "$RUNNER_TEMP/theos-toolchain.sha256"
+          tar -xJf "$RUNNER_TEMP/iOSToolchain-x86_64.tar.xz" -C "$HOME/theos/toolchain"
+          echo "THEOS_TOOLCHAIN_SHA256=$(cat "$RUNNER_TEMP/theos-toolchain.sha256")" >> "$GITHUB_ENV"
           if [ ! -d "$HOME/theos/sdks/iPhoneOS16.5.sdk" ]; then
             git init "$HOME/theos/sdks-git"
             git -C "$HOME/theos/sdks-git" remote add origin https://github.com/theos/sdks.git
@@ -60,6 +67,7 @@ jobs:
           make DEVICE=salaa hello
           mkdir -p ../xnu-output
           cp hakios-kernel userland/hello ../xnu-output/
+          cp "$RUNNER_TEMP/theos-toolchain.sha256" ../xnu-output/THEOS-TOOLCHAIN.sha256
           kernel_version="$(python3 tools/kernel-version.py)"
           python3 xnuloader/mkpayload.py \
             --kernel-version "$kernel_version" \
@@ -74,10 +82,12 @@ jobs:
           - Device configuration: SALAA / MT6785
           - Payload: XNUP containing the compiled XNU kernel and the project's open hello ramdisk
           - Command line: cpus=7 bootcpu=7 ufs=0 ufs_root=0
+          - Theos Linux toolchain: L1ghtmann/llvm-project test-210562a (SHA-256: $THEOS_TOOLCHAIN_SHA256)
+          - iPhoneOS SDK snapshot: theos/sdks 0222fd5413cf4b9af096f37b4621afa2688572f7
           - Darwin/iOS userland and Apple IPSW content: not included
           - Phone boot and runtime: not tested
           EOF
-          (cd ../xnu-output && shasum -a 256 hakios-kernel hello SALAA_XNUP.bin > SHA256SUMS)
+          (cd ../xnu-output && shasum -a 256 hakios-kernel hello SALAA_XNUP.bin THEOS-TOOLCHAIN.sha256 > SHA256SUMS)
           shasum -a 256 ../xnu-output/SALAA_XNUP.bin
 
       - name: Upload compiled SALAA kernel and XNUP payload
@@ -155,7 +165,8 @@ jobs:
             --fd-release v0.3.0-hakios.8e6cf0d \
             --image-name SALAA_HAKIOS_XNU_BOOT.img
           cp input/xnup/SALAA_XNUP.bin input/xnup/hakios-kernel input/xnup/hello input/xnup/XNU-PROVENANCE.md output/
-          (cd output && sha256sum SALAA_HAKIOS_XNU_BOOT.img SALAA_XNUP.bin hakios-kernel hello > SHA256SUMS)
+          cp input/xnup/THEOS-TOOLCHAIN.sha256 output/
+          (cd output && sha256sum SALAA_HAKIOS_XNU_BOOT.img SALAA_XNUP.bin hakios-kernel hello THEOS-TOOLCHAIN.sha256 > SHA256SUMS)
           (cd output && sha256sum -c SHA256SUMS)
 
       - name: Upload SALAA HakiOS XNU image and payload artifacts
@@ -194,3 +205,4 @@ jobs:
             output/verification.json \
             output/PROVENANCE.md \
             output/XNU-PROVENANCE.md
+            output/THEOS-TOOLCHAIN.sha256
