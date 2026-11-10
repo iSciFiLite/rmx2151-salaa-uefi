@@ -1,5 +1,8 @@
 # SALAA UEFI — Realme 7 / RMX2151 / MT6785
 
+> [!NOTE]
+> **Inclusive Development Active**: This component is developed in lockstep with the HakiOS kernel and XnuLoader in the unified inclusive repository: [**iSciFiLite/hakios-rm6785-salaa**](https://github.com/iSciFiLite/hakios-rm6785-salaa). All cross-layer enhancements, shared memory map definitions, and unified fastboot boot image packaging are authored atomically there. Standalone repositories are synchronized at release milestones via `tools/split-subtrees.sh`.
+
 **Status updated 2026-11-02.** This repository contains a SALAA EDK II platform overlay for [Mu-Silicium](https://github.com/Project-Silicium/Mu-Silicium), plus a pinned [HakiOS UEFI](https://github.com/oosexgang/hakios-uefi) integration and a hosted combined HakiOS/XNU Android-v2 boot image. CI can verify the build and container; only a phone test can verify LK acceptance, UEFI entry, the XNU handoff, or peripherals.
 
 > **Do not flash these images.** The combined image is intended only for a temporary `fastboot boot` RAM test from an external USB host, after the owner has a known recovery route and an unlocked bootloader. It does not write the boot or LK partitions. Its LK acceptance and hardware behavior are unverified. The FD base overlaps Android's normal kernel load area, so it must replace the stock kernel payload exactly as packaged.
